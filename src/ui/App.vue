@@ -43,7 +43,7 @@
 
 				<div
 					v-if="!mobile"
-					class="absolute top-1/2 right-full flex w-6 h-6 rounded-s-full cursor-col-resize touch-none select-none items-center justify-center border-t border-b border-l border-stone-700 bg-stone-950 text-stone-500 hover:bg-stone-800 hover:text-stone-200 active:bg-stone-800 active:text-stone-200"
+					class="absolute top-1/2 right-full flex w-6 h-8 rounded-s-full cursor-col-resize touch-none select-none items-center justify-center border-t border-b border-l border-stone-700 bg-stone-950 ps-0.5 text-stone-500 hover:bg-stone-800 hover:text-stone-200 active:bg-stone-800 active:text-stone-200"
 					title="drag to resize"
 					@pointerdown="onDragStart"
 				>
