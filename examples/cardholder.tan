@@ -1,0 +1,55 @@
+version: 1
+unit: mm
+defaults:
+  leather: veg-tan
+  thickness: 2
+  stitch:
+    inset: 3.5
+    spacing: 3.5
+    hole: 1
+    style: saddle
+
+leathers:
+  veg-tan:
+    front: { roughness: 0.35, grain: fine }
+    back: { roughness: 0.8, grain: suede }
+    color: "#6b3a2a"
+
+pieces:
+  - id: body
+    side: front
+    outline:
+      rect: { w: 90, h: 70, r: 6 }
+    holes:
+      - rect: { x: 8, y: 8, w: 74, h: 18, r: 2 }
+    stitch:
+      - along: outline
+        inset: 3.5
+        spacing: 3.5
+    folds:
+      - id: spine
+        from: [0, 35]
+        to: [90, 35]
+        angle: 90
+        hinge: valley
+  - id: flap
+    side: front
+    outline:
+      rect: { w: 90, h: 40, chamfer: [0, 0, 8, 8] }
+    stitch:
+      - along: outline
+        inset: 3.5
+        spacing: 4
+
+layout:
+  paper: A4
+  margin: 10
+  placements:
+    - piece: body
+      x: 15
+      y: 20
+      rotate: 0
+    - piece: flap
+      x: 15
+      y: 100
+      rotate: 0

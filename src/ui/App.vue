@@ -1,0 +1,327 @@
+<template>
+	<div class="flex h-full flex-col">
+		<header
+			class="flex flex-wrap items-center gap-1 border-b border-stone-700 p-1"
+		>
+			<ToolbarButton class="md:hidden" @click="toggleSidebar">
+				{{ sidebarOpen ? 'hide code' : 'show code' }}
+			</ToolbarButton>
+
+			<ToolbarButton @click="onNew">new</ToolbarButton>
+
+			<ToolbarButton as="label">
+				open
+				<input
+					class="hidden"
+					type="file"
+					accept=".tan,.yaml,.yml,text/yaml"
+					@change="onOpen"
+				/>
+			</ToolbarButton>
+
+			<span class="text-stone-400">{{ filename }}</span>
+		</header>
+
+		<div ref="splitEl" class="flex min-h-0 flex-1">
+			<div
+				class="min-h-0 min-w-0 flex-1 overflow-hidden bg-stone-900 [&_svg]:block [&_svg]:h-full [&_svg]:w-full"
+				v-html="svg"
+			/>
+
+			<aside
+				v-show="!mobile || sidebarOpen"
+				class="relative flex shrink-0 flex-col bg-stone-900"
+				:class="mobile ? 'absolute inset-0 z-10' : ''"
+				:style="mobile ? undefined : { width: sidebarW + 'px' }"
+			>
+				<textarea
+					v-model="text"
+					class="min-h-0 flex-1 border-l border-stone-700 resize-none bg-stone-900 p-2 text-stone-200 outline-none"
+					spellcheck="false"
+					@input="onInput"
+				/>
+
+				<div
+					v-if="!mobile"
+					class="absolute top-1/2 right-full flex w-6 h-6 rounded-s-full cursor-col-resize touch-none select-none items-center justify-center border-t border-b border-l border-stone-700 bg-stone-950 text-stone-500 hover:bg-stone-800 hover:text-stone-200 active:bg-stone-800 active:text-stone-200"
+					title="drag to resize"
+					@pointerdown="onDragStart"
+				>
+					<span class="pointer-events-none leading-none" aria-hidden="true">
+						⋮
+					</span>
+				</div>
+			</aside>
+		</div>
+
+		<footer
+			class="flex items-center gap-1 border-t border-stone-700 bg-stone-950 p-1"
+		>
+			<div class="contents">
+				<!-- Paper -->
+				<span class="text-stone-400">paper:</span>
+
+				<ToolbarButton
+					v-for="p in paperNames"
+					:key="p"
+					:on="paperKind === p"
+					@click="setPaper(p)"
+				>
+					{{ p }}
+				</ToolbarButton>
+
+				<template v-if="paperKind === 'custom'">
+					<PaperSizeInput
+						type="number"
+						min="1"
+						step="1"
+						:value="customW"
+						@change="onCustomDim($event, 'w')"
+					/>
+
+					<span class="text-stone-400">×</span>
+
+					<PaperSizeInput
+						type="number"
+						min="1"
+						step="1"
+						:value="customH"
+						@change="onCustomDim($event, 'h')"
+					/>
+
+					<span class="text-stone-400">mm</span>
+				</template>
+
+				<span v-else class="text-stone-400"> {{ paperW }}×{{ paperH }}mm </span>
+			</div>
+
+			<!-- Export -->
+			<div class="contents">
+				<span class="ms-2 text-stone-400">export:</span>
+
+				<ToolbarButton @click="onExportTan">tan</ToolbarButton>
+
+				<ToolbarButton @click="onExportSvg">svg</ToolbarButton>
+
+				<ToolbarButton @click="onExportPdf">pdf</ToolbarButton>
+
+				<ToolbarButton @click="onPrint">print</ToolbarButton>
+			</div>
+
+			<div v-if="error" class="ms-auto text-red-400">{{ error }}</div>
+		</footer>
+	</div>
+</template>
+
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref } from 'vue';
+import ToolbarButton from './ToolbarButton.vue';
+import PaperSizeInput from './PaperSizeInput.vue';
+import { compile } from '../format/compile';
+import { parseDocument } from '../format/parse';
+import { paperPick, setLayoutPaper, type PaperPick } from '../format/paper';
+import { toSvg } from '../format/toSvg';
+import {
+	download,
+	loadSidebarOpen,
+	loadSidebarW,
+	loadStored,
+	saveSidebarOpen,
+	saveSidebarW,
+	saveStored,
+	SIDEBAR_W_MIN,
+} from '../persist';
+import example from '../../examples/cardholder.tan?raw';
+
+const text = ref(example);
+const filename = ref('cardholder.tan');
+const error = ref('');
+const svg = ref('');
+const stitchNote = ref('');
+const sidebarW = ref(loadSidebarW());
+const sidebarOpen = ref(loadSidebarOpen());
+const mobile = ref(false);
+const splitEl = ref<HTMLElement | null>(null);
+const paperNames: PaperPick[] = ['A3', 'A4', 'A5', 'custom'];
+const paperKind = ref<PaperPick>('A4');
+const paperW = ref(210);
+const paperH = ref(297);
+const customW = ref(210);
+const customH = ref(297);
+let lastGoodSvg = '';
+let t = 0;
+let mq: MediaQueryList | null = null;
+
+onMounted(() => {
+	const stored = loadStored();
+	if (stored) {
+		text.value = stored.text;
+		filename.value = stored.filename;
+	}
+	compileNow();
+	mq = window.matchMedia('(max-width: 767px)');
+	mobile.value = mq.matches;
+	mq.addEventListener('change', onMq);
+});
+
+onUnmounted(() => {
+	mq?.removeEventListener('change', onMq);
+});
+
+function onMq(e: MediaQueryListEvent) {
+	mobile.value = e.matches;
+}
+
+function toggleSidebar() {
+	sidebarOpen.value = !sidebarOpen.value;
+	saveSidebarOpen(sidebarOpen.value);
+}
+
+function onDragStart(e: PointerEvent) {
+	e.preventDefault();
+	const root = splitEl.value;
+	if (!root) return;
+	const startX = e.clientX;
+	const startW = sidebarW.value;
+	const max = Math.max(SIDEBAR_W_MIN, root.clientWidth - 80);
+	const prevCursor = document.body.style.cursor;
+	document.body.style.cursor = 'col-resize';
+	const onMove = (ev: PointerEvent) => {
+		sidebarW.value = Math.min(
+			max,
+			Math.max(SIDEBAR_W_MIN, startW - (ev.clientX - startX)),
+		);
+	};
+	const onUp = () => {
+		document.body.style.cursor = prevCursor;
+		window.removeEventListener('pointermove', onMove);
+		window.removeEventListener('pointerup', onUp);
+		saveSidebarW(sidebarW.value);
+	};
+	window.addEventListener('pointermove', onMove);
+	window.addEventListener('pointerup', onUp);
+}
+
+function onInput() {
+	clearTimeout(t);
+	t = window.setTimeout(compileNow, 50);
+}
+
+function compileNow() {
+	const parsed = parseDocument(text.value);
+	if (!parsed.ok) {
+		error.value = `${parsed.errors[0].line}:${parsed.errors[0].column} ${parsed.errors[0].message}`;
+		svg.value = lastGoodSvg;
+		return;
+	}
+	error.value = '';
+	const scene = compile(parsed.doc);
+	const n = scene.pieces.reduce((s, p) => s + p.stitchHoles.length, 0);
+	stitchNote.value = n === 1 ? '1 stitch hole' : `${n} stitch holes`;
+	lastGoodSvg = toSvg(scene);
+	svg.value = lastGoodSvg;
+	paperKind.value = paperPick(scene.paper);
+	paperW.value = scene.paper.w;
+	paperH.value = scene.paper.h;
+	if (paperKind.value === 'custom') {
+		customW.value = scene.paper.w;
+		customH.value = scene.paper.h;
+	}
+	saveStored(text.value, filename.value);
+}
+
+function setPaper(pick: PaperPick) {
+	if (pick === 'custom') {
+		customW.value = paperW.value;
+		customH.value = paperH.value;
+	}
+	text.value = setLayoutPaper(text.value, pick, {
+		w: customW.value,
+		h: customH.value,
+	});
+	compileNow();
+}
+
+function onCustomDim(ev: Event, axis: 'w' | 'h') {
+	const n = Number((ev.target as HTMLInputElement).value);
+	if (!Number.isFinite(n) || n <= 0) return;
+	if (axis === 'w') customW.value = n;
+	else customH.value = n;
+	text.value = setLayoutPaper(text.value, 'custom', {
+		w: customW.value,
+		h: customH.value,
+	});
+	compileNow();
+}
+
+function onNew() {
+	text.value = example;
+	filename.value = 'pattern.tan';
+	compileNow();
+}
+
+function onOpen(ev: Event) {
+	const file = (ev.target as HTMLInputElement).files?.[0];
+	if (!file) return;
+	file.text().then((s) => {
+		text.value = s;
+		filename.value = file.name;
+		compileNow();
+	});
+}
+
+function onExportTan() {
+	download(
+		filename.value.endsWith('.tan') ? filename.value : filename.value + '.tan',
+		text.value,
+		'text/yaml',
+	);
+}
+
+function onExportSvg() {
+	const parsed = parseDocument(text.value);
+	if (!parsed.ok) return;
+	download(
+		filename.value.replace(/\.tan$/, '') + '.svg',
+		toSvg(compile(parsed.doc)),
+		'image/svg+xml',
+	);
+}
+
+async function pdfBytes(): Promise<Uint8Array | null> {
+	const parsed = parseDocument(text.value);
+	if (!parsed.ok) return null;
+	const { toPdf } = await import('../format/toPdf');
+	return toPdf(compile(parsed.doc));
+}
+
+async function onExportPdf() {
+	const bytes = await pdfBytes();
+	if (!bytes) return;
+	download(
+		filename.value.replace(/\.tan$/, '') + '.pdf',
+		bytes as BlobPart,
+		'application/pdf',
+	);
+}
+
+async function onPrint() {
+	const bytes = await pdfBytes();
+	if (!bytes) return;
+	const url = URL.createObjectURL(
+		new Blob([bytes as BlobPart], { type: 'application/pdf' }),
+	);
+	const iframe = document.createElement('iframe');
+	iframe.setAttribute('aria-hidden', 'true');
+	iframe.style.position = 'fixed';
+	iframe.style.width = '0';
+	iframe.style.height = '0';
+	iframe.style.border = '0';
+	iframe.src = url;
+	iframe.addEventListener('load', () => {
+		iframe.contentWindow?.focus();
+		iframe.contentWindow?.print();
+	});
+	document.body.appendChild(iframe);
+}
+</script>

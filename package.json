@@ -1,0 +1,30 @@
+{
+  "name": "tanlines",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "format": "prettier --write src tests docs index.html package.json tsconfig.json vite.config.ts README.md AGENTS.md"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "vue": "^3.5.41",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/bun": "^1.4.2",
+    "@types/node": "^24.6.2",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "prettier": "^3.9.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.9",
+    "vue-tsc": "^3.3.11"
+  }
+}
