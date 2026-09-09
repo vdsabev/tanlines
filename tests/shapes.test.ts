@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { shapeFromRaw, shapeToPath } from '../src/format/shapes';
-import { pathToD } from '../src/format/pathD';
+import { pathToD, ptsToPath } from '../src/format/pathD';
+import { samplePath } from '../src/format/sample';
 import { stitchCenters } from '../src/format/stitch';
 
 describe('rect', () => {
@@ -53,5 +54,19 @@ describe('stitch', () => {
 		const dist = Math.hypot(second.x - first.x, second.y - first.y);
 		expect(dist).toBeGreaterThan(3);
 		expect(dist).toBeLessThan(4.2);
+	});
+});
+
+describe('path pts', () => {
+	it('45deg round stays on the corner, not outside or scooped', () => {
+		const p = [28, 0] as [number, number] & { r?: number };
+		p.r = 10;
+		const pts = samplePath(
+			ptsToPath([[10, 18], p, [80, 0], [98, 18], [98, 48], [10, 48]]),
+			32,
+		);
+		expect(Math.min(...pts.map((q) => q.y))).toBeGreaterThan(-0.05);
+		const near = pts.filter((q) => Math.abs(q.x - 28) < 6);
+		expect(Math.max(...near.map((q) => q.y))).toBeLessThan(6);
 	});
 });

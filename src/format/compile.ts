@@ -22,6 +22,7 @@ export function compile(doc: Document): Scene {
 			holes: p.holes.map(shapeToPath),
 			stitchHoles: [],
 			stitchRuns: [],
+			stitchColor: doc.defaults.stitch.color,
 			folds: p.folds,
 			hardware: p.hardware,
 			motion: p.motion,
@@ -34,7 +35,7 @@ export function compile(doc: Document): Scene {
 				style: rule.style,
 				hole: rule.hole,
 				pts,
-				closed: true,
+				closed: rule.skip.length === 0,
 			});
 			for (const c of pts) {
 				geom.stitchHoles.push({ x: c.x, y: c.y, d: rule.hole });

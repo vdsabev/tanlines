@@ -112,6 +112,7 @@ export type Document = {
 			spacing: number;
 			hole: number;
 			style: StitchStyle;
+			color: string;
 		};
 	};
 	leathers: Record<string, Leather>;
@@ -165,6 +166,7 @@ export type PieceGeom = {
 	holes: PathCmd[][];
 	stitchHoles: Array<{ x: number; y: number; d: number }>;
 	stitchRuns: StitchRun[];
+	stitchColor: string;
 	folds: Fold[];
 	hardware: Hardware[];
 	motion: Motion[];

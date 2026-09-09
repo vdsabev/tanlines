@@ -36,7 +36,7 @@ export function toSvg(scene: Scene, selectedId?: string | null): string {
 			}
 			if (d)
 				parts.push(
-					`<path d="${d}" fill="none" stroke="#2a1810" stroke-width="0.35" stroke-linecap="round"/>`,
+					`<path d="${d}" fill="none" stroke="${p.stitchColor}" stroke-width="0.35" stroke-linecap="round"/>`,
 				);
 		}
 		for (const s of p.stitchHoles) {

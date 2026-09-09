@@ -203,7 +203,7 @@ function addFoldStitch(
 	const xs = stitchCrossings(runs, from, to);
 	if (!xs.length || !hinge.stitchWrap || !hinge.bend) return;
 	const T = Math.max(0.2, piece.thickness);
-	const mat = threadMat();
+	const mat = threadMat(piece.stitchColor);
 	const alongs: number[] = [];
 	let rTh = 0.12;
 	for (const x of xs) {
@@ -268,30 +268,69 @@ function fixSign(rot: THREE.Group, inner: THREE.Group, fold: Fold) {
 	(rot.userData.hinge as HingeData).sign = sign;
 }
 
-function build(
-	piece: PieceGeom,
-	region: Region,
-	folds: Fold[],
-	origin: { cx: number; cy: number },
-): THREE.Group {
+function holdsFold(region: Region, from: Vec2, to: Vec2): boolean {
+	return onOutline(from, region.outline) && onOutline(to, region.outline);
+}
+
+function pickParent(
+	posR: Region,
+	negR: Region,
+	attach: { from: Vec2; to: Vec2 } | undefined,
+): Region {
+	if (attach) {
+		const posH = holdsFold(posR, attach.from, attach.to);
+		const negH = holdsFold(negR, attach.from, attach.to);
+		if (posH !== negH) return posH ? posR : negR;
+	}
+	return Math.abs(polyArea(posR.outline)) >= Math.abs(polyArea(negR.outline))
+		? posR
+		: negR;
+}
+
+function nextFold(region: Region, folds: Fold[]): number {
+	let best = -1;
+	let bestScore = -1;
 	for (let i = 0; i < folds.length; i++) {
 		const fold = folds[i];
 		const from = { x: fold.from[0], y: fold.from[1] };
 		const to = { x: fold.to[0], y: fold.to[1] };
 		const cut = splitRing(region.outline, from, to);
 		if (!cut) continue;
+		const score = Math.min(
+			Math.abs(polyArea(cut.pos)),
+			Math.abs(polyArea(cut.neg)),
+		);
+		if (score > bestScore) {
+			best = i;
+			bestScore = score;
+		}
+	}
+	return best;
+}
+
+function build(
+	piece: PieceGeom,
+	region: Region,
+	folds: Fold[],
+	origin: { cx: number; cy: number },
+	attach?: { from: Vec2; to: Vec2 },
+): THREE.Group {
+	const i = nextFold(region, folds);
+	if (i >= 0) {
+		const fold = folds[i];
+		const from = { x: fold.from[0], y: fold.from[1] };
+		const to = { x: fold.to[0], y: fold.to[1] };
+		const cut = splitRing(region.outline, from, to);
+		if (!cut) return panelLeaf(piece, region, folds, origin);
 		const rest = folds.filter((_, j) => j !== i);
 		const posR = takeSide(cut.pos, region, from, to, true);
 		const negR = takeSide(cut.neg, region, from, to, false);
-		const parent =
-			Math.abs(polyArea(posR.outline)) >= Math.abs(polyArea(negR.outline))
-				? posR
-				: negR;
+		const parent = pickParent(posR, negR, attach);
 		const child = parent === posR ? negR : posR;
 		const g = new THREE.Group();
-		g.add(build(piece, parent, rest, origin));
+		g.add(build(piece, parent, rest, origin, attach));
 		const { group, rot, inner } = makeHinge(piece, fold, child, origin);
-		inner.add(build(piece, child, rest, origin));
+		inner.add(build(piece, child, rest, origin, { from, to }));
 		fixSign(rot, inner, fold);
 		addFoldStitch(
 			piece,
@@ -308,6 +347,15 @@ function build(
 		g.add(group);
 		return g;
 	}
+	return panelLeaf(piece, region, folds, origin);
+}
+
+function panelLeaf(
+	piece: PieceGeom,
+	region: Region,
+	folds: Fold[],
+	origin: { cx: number; cy: number },
+): THREE.Group {
 	const g = panelGroup(
 		piece,
 		region.outline,

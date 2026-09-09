@@ -162,7 +162,7 @@ export function panelGroup(
 		roughness: 0.9,
 		metalness: 0,
 	});
-	const thread = threadMat();
+	const thread = threadMat(piece.stitchColor);
 	for (const run of stitches) {
 		const rHole = Math.max(0.15, run.hole / 2);
 		const rTh = Math.max(0.12, rHole * 0.42);
@@ -312,9 +312,9 @@ function addHardware(
 	root.add(s);
 }
 
-export function threadMat() {
+export function threadMat(color = '#e8d4a0') {
 	return new THREE.MeshStandardMaterial({
-		color: '#2a1810',
+		color,
 		roughness: 0.55,
 		metalness: 0,
 	});

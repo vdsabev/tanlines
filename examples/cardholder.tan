@@ -8,6 +8,7 @@ defaults:
     spacing: 3.5
     hole: 1
     style: saddle
+    color: "#e8d4a0"
 
 leathers:
   veg-tan:
@@ -15,52 +16,103 @@ leathers:
     back: { roughness: 0.8, grain: suede }
     color: "#6b3a2a"
 
+# ISO ID-1 card 85.6×54. Pocket 88×56. Bottom and side walls 10mm (~8–10 cards).
+# Top wall 12mm: same pocket plus one leather thickness, because it wraps outside the front.
 pieces:
   - id: body
     side: front
     outline:
-      rect: { w: 90, h: 70, r: 6 }
-    holes:
-      - rect: { x: 8, y: 8, w: 74, h: 18, r: 2 }
+      path:
+        d: >-
+          M 108 49
+          L 108 103
+          L 98 103
+          L 98 104
+          L 98 114
+          L 98 170
+          L 10 170
+          L 10 114
+          L 10 104
+          L 10 103
+          L 0 103
+          L 0 49
+          L 10 49
+          L 10 48
+          L 10 36
+          L 10 18
+          L 25.07 2.93
+          A 10 10 0 0 1 32.14 0
+          L 75.86 0
+          A 10 10 0 0 1 82.93 2.93
+          L 98 18
+          L 98 36
+          L 98 48
+          L 98 49
+          Z
     stitch:
       - along: outline
-        inset: 3.5
-        spacing: 3.5
+        start: 3.5
+        skip: [[54, 9999]]
+      - along: outline
+        start: 299.5
+        skip: [[0, 299], [350, 9999]]
     folds:
-      - id: spine
-        from: [0, 35]
-        to: [90, 35]
-        angle: 90
-        hinge: valley
-      - id: lip
-        from: [6, 0]
-        to: [84, 0]
+      - id: overBack
+        from: [10, 48]
+        to: [98, 48]
         angle: 0
         hinge: valley
-    motion:
-      - id: open
-        folds: { spine: 30 }
-  - id: flap
-    side: front
-    outline:
-      rect: { w: 90, h: 40, chamfer: [0, 0, 8, 8] }
-    stitch:
-      - along: outline
-        inset: 3.5
-        spacing: 4
-        style: box
+      - id: lid
+        from: [10, 36]
+        to: [98, 36]
+        angle: 0
+        hinge: valley
+      - id: underBack
+        from: [10, 104]
+        to: [98, 104]
+        angle: 0
+        hinge: valley
+      - id: underFront
+        from: [10, 114]
+        to: [98, 114]
+        angle: 0
+        hinge: valley
+      - id: left
+        from: [10, 49]
+        to: [10, 103]
+        angle: 0
+        hinge: valley
+      - id: right
+        from: [98, 49]
+        to: [98, 103]
+        angle: 0
+        hinge: valley
+      - id: seamLeft
+        from: [0, 49]
+        to: [0, 103]
+        angle: 0
+        hinge: valley
+      - id: seamRight
+        from: [108, 49]
+        to: [108, 103]
+        angle: 0
+        hinge: valley
     hardware:
       - type: snap
-        at: [45, 18]
-      - type: rivet
-        at: [12, 12]
-        size: 4
-    folds:
-      - id: lip
-        from: [8, 40]
-        to: [82, 40]
-        angle: 0
-        hinge: valley
+        at: [54, 14]
+    motion:
+      - id: overBack
+        folds: { overBack: 90 }
+      - id: lid
+        folds: { lid: 90 }
+      - id: underBack
+        folds: { underBack: 90 }
+      - id: underFront
+        folds: { underFront: 90 }
+      - id: left
+        folds: { left: 90 }
+      - id: right
+        folds: { right: 90 }
 
 layout:
   paper: A4
@@ -68,13 +120,7 @@ layout:
   placements:
     - piece: body
       x: 15
-      y: 20
-      rotate: 0
-    - piece: flap
-      x: 15
-      y: 100
+      y: 15
       rotate: 0
 
-assembly:
-  - a: body.lip
-    b: flap.lip
+assembly: []

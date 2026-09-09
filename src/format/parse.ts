@@ -62,6 +62,7 @@ function normalize(raw: unknown): Document {
 			spacing: Number(stitchDef.spacing ?? 3.5),
 			hole: Number(stitchDef.hole ?? 1),
 			style: stitchStyle(stitchDef.style),
+			color: String(stitchDef.color ?? '#e8d4a0'),
 		},
 	};
 	const leathers: Record<string, Leather> = { 'veg-tan': { ...VEG } };

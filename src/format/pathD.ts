@@ -106,7 +106,8 @@ export function ptsToPath(
 		const v2y = next[1] - p[1];
 		const l1 = Math.hypot(v1x, v1y) || 1;
 		const l2 = Math.hypot(v2x, v2y) || 1;
-		const cut = r > 0 ? r : ch;
+		const turn = Math.atan2(v1x * v2y - v1y * v2x, v1x * v2x + v1y * v2y);
+		const cut = r > 0 ? r * Math.tan(Math.abs(turn) / 2) : ch;
 		const d1 = Math.min(cut, l1 / 2);
 		const d2 = Math.min(cut, l2 / 2);
 		const ax = p[0] - (v1x / l1) * d1;

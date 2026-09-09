@@ -16,19 +16,36 @@ describe('parse', () => {
 		const r = parseDocument(example);
 		expect(r.ok).toBe(true);
 		if (!r.ok) return;
-		expect(r.doc.pieces.map((p) => p.id)).toEqual(['body', 'flap']);
+		expect(r.doc.pieces.map((p) => p.id)).toEqual(['body']);
 		expect(r.doc.layout.paper.name).toBe('A4');
 		expect(r.doc.layout.paper.w).toBe(210);
-		expect(r.doc.pieces[0].folds[0].id).toBe('spine');
-		expect(r.doc.pieces[0].motion[0]).toEqual({
-			id: 'open',
-			folds: { spine: 30 },
-		});
-		expect(r.doc.assembly).toEqual([{ a: 'body.lip', b: 'flap.lip' }]);
-		expect(r.doc.pieces[1].hardware).toEqual([
-			{ type: 'snap', at: [45, 18], size: 10 },
-			{ type: 'rivet', at: [12, 12], size: 4 },
+		expect(r.doc.pieces[0].folds.map((f) => f.id)).toEqual([
+			'overBack',
+			'lid',
+			'underBack',
+			'underFront',
+			'left',
+			'right',
+			'seamLeft',
+			'seamRight',
 		]);
+		expect(r.doc.pieces[0].motion.map((m) => m.id)).toEqual([
+			'overBack',
+			'lid',
+			'underBack',
+			'underFront',
+			'left',
+			'right',
+		]);
+		expect(r.doc.pieces[0].motion[0]).toEqual({
+			id: 'overBack',
+			folds: { overBack: 90 },
+		});
+		expect(r.doc.assembly).toEqual([]);
+		expect(r.doc.pieces[0].hardware).toEqual([
+			{ type: 'snap', at: [54, 14], size: 10 },
+		]);
+		expect(r.doc.pieces[0].holes).toEqual([]);
 	});
 
 	it('reports yaml errors', () => {
@@ -60,20 +77,31 @@ describe('setLayoutPaper', () => {
 });
 
 describe('compile', () => {
-	it('emits two placed pieces and stitch holes', () => {
+	it('emits one placed piece and two seam stitch runs', () => {
 		const r = parseDocument(example);
 		expect(r.ok).toBe(true);
 		if (!r.ok) return;
 		const scene = compile(r.doc);
-		expect(scene.pieces).toHaveLength(2);
-		expect(scene.pieces[0].stitchHoles.length).toBeGreaterThan(8);
+		expect(scene.pieces).toHaveLength(1);
+		expect(scene.pieces[0].stitchRuns).toHaveLength(2);
 		expect(scene.pieces[0].stitchRuns[0].style).toBe('saddle');
-		expect(scene.pieces[0].stitchRuns[0].closed).toBe(true);
-		expect(scene.pieces[0].holes).toHaveLength(1);
+		expect(scene.pieces[0].stitchRuns[0].closed).toBe(false);
+		expect(scene.pieces[0].stitchRuns[1].closed).toBe(false);
+		expect(scene.pieces[0].stitchHoles.length).toBeGreaterThan(8);
+		expect(scene.pieces[0].holes).toHaveLength(0);
 		expect(scene.pieces[0].thickness).toBe(2);
 		expect(scene.pieces[0].front.roughness).toBe(0.35);
 		expect(scene.pieces[0].back.roughness).toBe(0.8);
-		expect(scene.pieces[0].folds.map((f) => f.id)).toEqual(['spine', 'lip']);
-		expect(scene.assembly).toEqual([{ a: 'body.lip', b: 'flap.lip' }]);
+		expect(scene.pieces[0].folds.map((f) => f.id)).toEqual([
+			'overBack',
+			'lid',
+			'underBack',
+			'underFront',
+			'left',
+			'right',
+			'seamLeft',
+			'seamRight',
+		]);
+		expect(scene.assembly).toEqual([]);
 	});
 });
