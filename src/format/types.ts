@@ -28,6 +28,8 @@ export type PathShape = {
 
 export type Shape = RectShape | EllipseShape | PathShape;
 
+export type StitchStyle = 'saddle' | 'running' | 'box';
+
 export type StitchRule = {
 	along: 'outline' | number;
 	inset: number;
@@ -35,6 +37,14 @@ export type StitchRule = {
 	hole: number;
 	start: number;
 	skip: Array<[number, number]>;
+	style: StitchStyle;
+};
+
+export type StitchRun = {
+	style: StitchStyle;
+	hole: number;
+	pts: Vec2[];
+	closed: boolean;
 };
 
 export type Fold = {
@@ -55,6 +65,14 @@ export type AssemblyJoin = {
 	b: string;
 };
 
+export type HardwareKind = 'snap' | 'rivet' | 'button' | 'stamp';
+
+export type Hardware = {
+	type: HardwareKind;
+	at: [number, number];
+	size: number;
+};
+
 export type Piece = {
 	id: string;
 	side: 'front' | 'back';
@@ -64,7 +82,7 @@ export type Piece = {
 	holes: Shape[];
 	stitch: StitchRule[];
 	folds: Fold[];
-	hardware: unknown[];
+	hardware: Hardware[];
 	motion: Motion[];
 };
 
@@ -89,7 +107,12 @@ export type Document = {
 	defaults: {
 		leather: string;
 		thickness: number;
-		stitch: { inset: number; spacing: number; hole: number; style: string };
+		stitch: {
+			inset: number;
+			spacing: number;
+			hole: number;
+			style: StitchStyle;
+		};
 	};
 	leathers: Record<string, Leather>;
 	pieces: Piece[];
@@ -141,7 +164,9 @@ export type PieceGeom = {
 	outline: PathCmd[];
 	holes: PathCmd[][];
 	stitchHoles: Array<{ x: number; y: number; d: number }>;
+	stitchRuns: StitchRun[];
 	folds: Fold[];
+	hardware: Hardware[];
 	motion: Motion[];
 };
 

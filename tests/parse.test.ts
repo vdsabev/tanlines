@@ -25,6 +25,10 @@ describe('parse', () => {
 			folds: { spine: 30 },
 		});
 		expect(r.doc.assembly).toEqual([{ a: 'body.lip', b: 'flap.lip' }]);
+		expect(r.doc.pieces[1].hardware).toEqual([
+			{ type: 'snap', at: [45, 18], size: 10 },
+			{ type: 'rivet', at: [12, 12], size: 4 },
+		]);
 	});
 
 	it('reports yaml errors', () => {
@@ -63,6 +67,8 @@ describe('compile', () => {
 		const scene = compile(r.doc);
 		expect(scene.pieces).toHaveLength(2);
 		expect(scene.pieces[0].stitchHoles.length).toBeGreaterThan(8);
+		expect(scene.pieces[0].stitchRuns[0].style).toBe('saddle');
+		expect(scene.pieces[0].stitchRuns[0].closed).toBe(true);
 		expect(scene.pieces[0].holes).toHaveLength(1);
 		expect(scene.pieces[0].thickness).toBe(2);
 		expect(scene.pieces[0].front.roughness).toBe(0.35);

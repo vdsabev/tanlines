@@ -1,10 +1,13 @@
 import { parse as parseYaml } from 'yaml';
 import { parsePaper } from './paper';
 import { shapeFromRaw } from './shapes';
+import { stitchStyle } from './thread';
 import type {
 	AssemblyJoin,
 	Document,
 	Fold,
+	Hardware,
+	HardwareKind,
 	Leather,
 	Motion,
 	ParseResult,
@@ -58,7 +61,7 @@ function normalize(raw: unknown): Document {
 			inset: Number(stitchDef.inset ?? 3.5),
 			spacing: Number(stitchDef.spacing ?? 3.5),
 			hole: Number(stitchDef.hole ?? 1),
-			style: String(stitchDef.style ?? 'saddle'),
+			style: stitchStyle(stitchDef.style),
 		},
 	};
 	const leathers: Record<string, Leather> = { 'veg-tan': { ...VEG } };
@@ -121,7 +124,7 @@ function pieceFrom(
 		holes: holesRaw.map(shapeFromRaw),
 		stitch: stitchRaw.map((s) => stitchFrom(s, defaults)),
 		folds: foldsFrom(o.folds),
-		hardware: Array.isArray(o.hardware) ? o.hardware : [],
+		hardware: hardwareFrom(o.hardware),
 		motion: motionsFrom(o.motion),
 	};
 }
@@ -136,12 +139,38 @@ function stitchFrom(raw: unknown, defaults: Document['defaults']): StitchRule {
 		hole: Number(o.hole ?? defaults.stitch.hole),
 		start: Number(o.start ?? 0),
 		skip: Array.isArray(o.skip) ? (o.skip as Array<[number, number]>) : [],
+		style: stitchStyle(o.style ?? defaults.stitch.style),
 	};
 }
 
 function pair(v: unknown): [number, number] {
 	if (Array.isArray(v) && v.length >= 2) return [Number(v[0]), Number(v[1])];
 	return [0, 0];
+}
+
+function hardwareKind(raw: unknown): HardwareKind {
+	if (raw === 'rivet' || raw === 'button' || raw === 'stamp') return raw;
+	return 'snap';
+}
+
+function defaultSize(kind: HardwareKind): number {
+	if (kind === 'rivet') return 4;
+	if (kind === 'button') return 8;
+	if (kind === 'stamp') return 12;
+	return 10;
+}
+
+function hardwareFrom(raw: unknown): Hardware[] {
+	if (!Array.isArray(raw)) return [];
+	return raw.map((h) => {
+		const o = (h ?? {}) as Record<string, unknown>;
+		const type = hardwareKind(o.type);
+		return {
+			type,
+			at: pair(o.at),
+			size: Number(o.size ?? defaultSize(type)),
+		};
+	});
 }
 
 function foldsFrom(raw: unknown): Fold[] {

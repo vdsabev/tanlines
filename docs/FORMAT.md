@@ -88,11 +88,13 @@ A rule, not a list of holes. `along` is `outline` or a hole index later.
 
 `skip` is ranges `[from, to]` mm along the inset path left unpunched.
 
+`style` is `saddle` (default), `running`, or `box`. Saddle puts a stitch in every gap on both faces. Running alternates faces. Box pairs consecutive holes (even gaps on both faces, odd gaps empty). 3D shows waxed thread through the holes; where a run crosses an interior fold the thread follows the outer wrap. 2D draws the same face pairs plus the punch circles.
+
 ## Folds, hardware, motion, assembly
 
 Fold `angle` is the rest pose in degrees. An interior fold splits the piece; a fold on the outline is a join edge (no split). Valley hinges sit on the back face (thickness allowance); mountain on the front. The outer face wraps on a radius of `thickness` so the fold corner is round.
 
-Motion is a named map of fold id → angle. The 3D slider blends rest → that angle (0 = rest, 1 = motion). Hardware: `{ type: snap|rivet|button, at: [x, y], size? }` (drawn later).
+Motion is a named map of fold id → angle. The 3D slider blends rest → that angle (0 = rest, 1 = motion). Hardware is `{ type: snap|rivet|button|stamp, at: [x, y], size? }`. Defaults: snap 10 mm, rivet 4, button 8, stamp 12. Piece-local 2D; 3D sits on the panel that owns `at`.
 
 `assembly` joins two named folds, qualified as `pieceId.foldId`:
 

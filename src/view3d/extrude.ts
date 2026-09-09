@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { samplePath } from '../format/sample';
-import type { PieceGeom, Vec2 } from '../format/types';
+import { stitchPairs } from '../format/thread';
+import type { Hardware, PieceGeom, StitchRun, Vec2 } from '../format/types';
 
 export function bbox(pts: Vec2[]): {
 	cx: number;
@@ -117,7 +118,8 @@ export function panelGroup(
 	piece: PieceGeom,
 	outline: Vec2[],
 	holes: Vec2[][],
-	stitches: PieceGeom['stitchHoles'],
+	stitches: StitchRun[],
+	hardware: Hardware[],
 	origin: { cx: number; cy: number },
 ): THREE.Group {
 	const shape = toShape(outline);
@@ -155,22 +157,187 @@ export function panelGroup(
 
 	const root = new THREE.Group();
 	root.add(mesh);
-	for (const h of stitches) {
-		const r = Math.max(0.15, h.d / 2);
-		const cyl = new THREE.CylinderGeometry(r, r, depth + 0.05, 10);
-		cyl.rotateX(Math.PI / 2);
+	const punch = new THREE.MeshStandardMaterial({
+		color: '#1c1917',
+		roughness: 0.9,
+		metalness: 0,
+	});
+	const thread = threadMat();
+	for (const run of stitches) {
+		const rHole = Math.max(0.15, run.hole / 2);
+		const rTh = Math.max(0.12, rHole * 0.42);
+		const zF = depth / 2 + rTh * 0.35;
+		const zB = -depth / 2 - rTh * 0.35;
+		const xyz = (p: Vec2, z: number) =>
+			new THREE.Vector3(p.x - origin.cx, -(p.y - origin.cy), z);
+		for (const p of run.pts) {
+			addThreadSeg(root, xyz(p, zF), xyz(p, zB), rTh, thread);
+			const cyl = new THREE.CylinderGeometry(rHole, rHole, depth + 0.05, 10);
+			cyl.rotateX(Math.PI / 2);
+			const m = new THREE.Mesh(cyl, punch);
+			m.position.set(p.x - origin.cx, -(p.y - origin.cy), 0);
+			root.add(m);
+		}
+		const pairs = stitchPairs(run.pts.length, run.closed, run.style);
+		for (const [i, j] of pairs.front) {
+			addThreadSeg(root, xyz(run.pts[i], zF), xyz(run.pts[j], zF), rTh, thread);
+		}
+		for (const [i, j] of pairs.back) {
+			addThreadSeg(root, xyz(run.pts[i], zB), xyz(run.pts[j], zB), rTh, thread);
+		}
+	}
+	for (const h of hardware) addHardware(root, h, origin, depth);
+	return root;
+}
+
+function metal(color: string, metalness: number, roughness: number) {
+	return new THREE.MeshStandardMaterial({ color, metalness, roughness });
+}
+
+function addHardware(
+	root: THREE.Group,
+	h: Hardware,
+	origin: { cx: number; cy: number },
+	depth: number,
+) {
+	const x = h.at[0] - origin.cx;
+	const y = -(h.at[1] - origin.cy);
+	const r = Math.max(0.6, h.size / 2);
+	const zF = depth / 2;
+	const zB = -depth / 2;
+	if (h.type === 'stamp') {
+		const t = Math.max(0.45, depth * 0.35);
+		const geo = new THREE.CylinderGeometry(r, r, t, 20);
+		geo.rotateX(Math.PI / 2);
 		const m = new THREE.Mesh(
-			cyl,
+			geo,
 			new THREE.MeshStandardMaterial({
-				color: '#1c1917',
-				roughness: 0.9,
+				color: '#3f2a22',
+				roughness: 0.85,
 				metalness: 0,
 			}),
 		);
-		m.position.set(h.x - origin.cx, -(h.y - origin.cy), 0);
+		m.position.set(x, y, zF - t * 0.35);
 		root.add(m);
+		const rim = new THREE.TorusGeometry(
+			r * 0.92,
+			Math.max(0.25, t * 0.4),
+			8,
+			20,
+		);
+		const ring = new THREE.Mesh(
+			rim,
+			new THREE.MeshStandardMaterial({
+				color: '#2a1c16',
+				roughness: 0.8,
+				metalness: 0,
+			}),
+		);
+		ring.position.set(x, y, zF + 0.05);
+		root.add(ring);
+		return;
 	}
-	return root;
+	if (h.type === 'rivet') {
+		const brass = metal('#b08d57', 0.85, 0.35);
+		const capR = Math.max(r * 0.85, depth * 0.85);
+		const cap = (z: number, front: boolean) => {
+			const geo = new THREE.SphereGeometry(
+				capR,
+				16,
+				10,
+				0,
+				Math.PI * 2,
+				0,
+				Math.PI / 2,
+			);
+			geo.rotateX(front ? -Math.PI / 2 : Math.PI / 2);
+			const m = new THREE.Mesh(geo, brass);
+			m.position.set(x, y, z);
+			root.add(m);
+		};
+		cap(zF, true);
+		cap(zB, false);
+		const shaft = new THREE.CylinderGeometry(
+			capR * 0.35,
+			capR * 0.35,
+			depth + capR * 0.4,
+			10,
+		);
+		shaft.rotateX(Math.PI / 2);
+		const m = new THREE.Mesh(shaft, brass);
+		m.position.set(x, y, 0);
+		root.add(m);
+		return;
+	}
+	if (h.type === 'button') {
+		const mat = metal('#4a4038', 0.2, 0.55);
+		const t = Math.max(depth * 0.9, r * 0.7);
+		const disc = new THREE.CylinderGeometry(r, r * 0.92, t, 24);
+		disc.rotateX(Math.PI / 2);
+		const m = new THREE.Mesh(disc, mat);
+		m.position.set(x, y, zF + t / 2);
+		root.add(m);
+		const rim = new THREE.TorusGeometry(
+			r * 0.55,
+			Math.max(0.28, t * 0.18),
+			8,
+			20,
+		);
+		const ring = new THREE.Mesh(rim, mat);
+		ring.position.set(x, y, zF + t);
+		root.add(ring);
+		return;
+	}
+	const nick = metal('#c4c8cc', 0.7, 0.28);
+	const capH = Math.max(depth * 1.15, r * 0.45);
+	const cap = new THREE.CylinderGeometry(r, r, capH, 24);
+	cap.rotateX(Math.PI / 2);
+	const c = new THREE.Mesh(cap, nick);
+	c.position.set(x, y, zF + capH / 2);
+	root.add(c);
+	const ring = new THREE.TorusGeometry(
+		r * 0.42,
+		Math.max(0.28, capH * 0.18),
+		8,
+		20,
+	);
+	const rg = new THREE.Mesh(ring, nick);
+	rg.position.set(x, y, zF + capH + 0.08);
+	root.add(rg);
+	const sockH = Math.max(depth * 0.85, r * 0.35);
+	const sock = new THREE.CylinderGeometry(r * 0.75, r * 0.75, sockH, 20);
+	sock.rotateX(Math.PI / 2);
+	const s = new THREE.Mesh(sock, nick);
+	s.position.set(x, y, zB - sockH / 2);
+	root.add(s);
+}
+
+export function threadMat() {
+	return new THREE.MeshStandardMaterial({
+		color: '#2a1810',
+		roughness: 0.55,
+		metalness: 0,
+	});
+}
+
+export function addThreadSeg(
+	root: THREE.Group,
+	a: THREE.Vector3,
+	b: THREE.Vector3,
+	r: number,
+	mat: THREE.Material,
+) {
+	const dir = b.clone().sub(a);
+	const len = dir.length();
+	if (len < 1e-4) return;
+	const geo = new THREE.CylinderGeometry(r, r, len, 6);
+	const m = new THREE.Mesh(geo, mat);
+	m.position.copy(a).add(b).multiplyScalar(0.5);
+	m.quaternion.setFromUnitVectors(
+		new THREE.Vector3(0, 1, 0),
+		dir.multiplyScalar(1 / len),
+	);
+	root.add(m);
 }
 
 export function disposeObject(obj: THREE.Object3D) {

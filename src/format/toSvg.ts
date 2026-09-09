@@ -1,5 +1,6 @@
 import { pathToD } from './pathD';
-import type { Scene } from './types';
+import { stitchPairs } from './thread';
+import type { Hardware, Scene } from './types';
 
 export function toSvg(scene: Scene, selectedId?: string | null): string {
 	const { w, h } = scene.paper;
@@ -21,11 +22,29 @@ export function toSvg(scene: Scene, selectedId?: string | null): string {
 		parts.push(
 			`<path d="${d}" fill="${p.color}" fill-rule="evenodd" fill-opacity="0.85" stroke="${hi ? '#111' : '#2a1c12'}" stroke-width="${hi ? 0.6 : 0.35}"/>`,
 		);
+		for (const run of p.stitchRuns) {
+			const pairs = stitchPairs(run.pts.length, run.closed, run.style);
+			const segs = new Set(
+				[...pairs.front, ...pairs.back].map(([i, j]) => `${i}-${j}`),
+			);
+			let d = '';
+			for (const key of segs) {
+				const [i, j] = key.split('-').map(Number);
+				const a = run.pts[i];
+				const b = run.pts[j];
+				d += `M${a.x} ${a.y} L${b.x} ${b.y} `;
+			}
+			if (d)
+				parts.push(
+					`<path d="${d}" fill="none" stroke="#2a1810" stroke-width="0.35" stroke-linecap="round"/>`,
+				);
+		}
 		for (const s of p.stitchHoles) {
 			parts.push(
 				`<circle cx="${s.x}" cy="${s.y}" r="${s.d / 2}" fill="none" stroke="#111" stroke-width="0.2"/>`,
 			);
 		}
+		for (const h of p.hardware) parts.push(hardwareSvg(h));
 		for (const f of p.folds) {
 			parts.push(
 				`<line x1="${f.from[0]}" y1="${f.from[1]}" x2="${f.to[0]}" y2="${f.to[1]}" stroke="#a33" stroke-width="0.25" stroke-dasharray="1.4 1"/>`,
@@ -35,6 +54,27 @@ export function toSvg(scene: Scene, selectedId?: string | null): string {
 	}
 	parts.push('</svg>');
 	return parts.join('');
+}
+
+function hardwareSvg(h: Hardware): string {
+	const [x, y] = h.at;
+	const r = h.size / 2;
+	if (h.type === 'rivet') {
+		return `<circle cx="${x}" cy="${y}" r="${r}" fill="#8a8680" stroke="#3f3c38" stroke-width="0.25"/>`;
+	}
+	if (h.type === 'button') {
+		return `<g>
+			<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#3f3c38" stroke-width="0.35"/>
+			<circle cx="${x}" cy="${y}" r="${r * 0.35}" fill="#3f3c38"/>
+		</g>`;
+	}
+	if (h.type === 'stamp') {
+		return `<rect x="${x - r}" y="${y - r}" width="${h.size}" height="${h.size}" fill="none" stroke="#5c5348" stroke-width="0.3" stroke-dasharray="1 0.6"/>`;
+	}
+	return `<g>
+		<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#6b7280" stroke-width="0.45"/>
+		<circle cx="${x}" cy="${y}" r="${r * 0.45}" fill="none" stroke="#6b7280" stroke-width="0.3"/>
+	</g>`;
 }
 
 function grid(w: number, h: number): string {

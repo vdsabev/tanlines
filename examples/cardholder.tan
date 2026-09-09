@@ -48,6 +48,13 @@ pieces:
       - along: outline
         inset: 3.5
         spacing: 4
+        style: box
+    hardware:
+      - type: snap
+        at: [45, 18]
+      - type: rivet
+        at: [12, 12]
+        size: 4
     folds:
       - id: lip
         from: [8, 40]

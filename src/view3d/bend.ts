@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Fold, PieceGeom } from '../format/types';
-import { leatherMat, shade } from './extrude';
+import { addThreadSeg, leatherMat, shade } from './extrude';
 
 const EPS = 1e-3;
 /** Extra sweep (rad) so the radial faces sit inside the panels, not on them. */
@@ -132,4 +132,37 @@ export function setBendAngle(mesh: THREE.Mesh, angle: number) {
 	mesh.geometry = foldBendGeometry(d.length, d.radius, angle);
 	old.dispose();
 	mesh.visible = true;
+}
+
+export type StitchWrapData = {
+	alongs: number[];
+	radius: number;
+	rTh: number;
+	mat: THREE.Material;
+};
+
+function wrapPt(along: number, radius: number, φ: number): THREE.Vector3 {
+	return new THREE.Vector3(along, -radius * Math.sin(φ), radius * Math.cos(φ));
+}
+
+export function setStitchWrap(group: THREE.Group, angle: number) {
+	const d = group.userData.stitchWrap as StitchWrapData | undefined;
+	if (!d) return;
+	while (group.children.length) {
+		const ch = group.children[0] as THREE.Mesh;
+		group.remove(ch);
+		ch.geometry?.dispose();
+	}
+	if (Math.abs(angle) < EPS) return;
+	const n = Math.max(6, Math.ceil((Math.abs(angle) * 12) / Math.PI));
+	const r = d.radius + Math.sign(d.radius || 1) * d.rTh * 0.35;
+	for (const along of d.alongs) {
+		let prev = wrapPt(along, r, 0);
+		for (let i = 1; i <= n; i++) {
+			const φ = (angle * i) / n;
+			const next = wrapPt(along, r, φ);
+			addThreadSeg(group, prev, next, d.rTh, d.mat);
+			prev = next;
+		}
+	}
 }

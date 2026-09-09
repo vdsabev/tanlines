@@ -21,13 +21,22 @@ export function compile(doc: Document): Scene {
 			outline: shapeToPath(p.outline),
 			holes: p.holes.map(shapeToPath),
 			stitchHoles: [],
+			stitchRuns: [],
 			folds: p.folds,
+			hardware: p.hardware,
 			motion: p.motion,
 		};
 		for (const rule of p.stitch) {
 			const shape = rule.along === 'outline' ? p.outline : p.holes[rule.along];
 			if (!shape) continue;
-			for (const c of stitchCenters(shape, rule)) {
+			const pts = stitchCenters(shape, rule);
+			geom.stitchRuns.push({
+				style: rule.style,
+				hole: rule.hole,
+				pts,
+				closed: true,
+			});
+			for (const c of pts) {
 				geom.stitchHoles.push({ x: c.x, y: c.y, d: rule.hole });
 			}
 		}

@@ -23,6 +23,8 @@ let camera: THREE.PerspectiveCamera | null = null;
 let controls: OrbitControls | null = null;
 let pieceObj: THREE.Object3D | null = null;
 let raf = 0;
+let resizeRaf = 0;
+let settleTimer = 0;
 let ro: ResizeObserver | null = null;
 
 onMounted(() => {
@@ -53,7 +55,7 @@ onMounted(() => {
 	controls.enableDamping = true;
 	controls.dampingFactor = 0.08;
 
-	ro = new ResizeObserver(resize);
+	ro = new ResizeObserver(scheduleResize);
 	ro.observe(el);
 	rebuild();
 	loop();
@@ -61,6 +63,8 @@ onMounted(() => {
 
 onUnmounted(() => {
 	cancelAnimationFrame(raf);
+	cancelAnimationFrame(resizeRaf);
+	clearTimeout(settleTimer);
 	ro?.disconnect();
 	controls?.dispose();
 	if (pieceObj) disposeObject(pieceObj);
@@ -85,20 +89,37 @@ watch(
 	(on) => {
 		if (on)
 			requestAnimationFrame(() => {
-				resize();
+				resize(true);
 				if (!pieceObj) rebuild();
 			});
 	},
 );
 
-function resize() {
+function scheduleResize() {
+	if (resizeRaf) return;
+	resizeRaf = requestAnimationFrame(() => {
+		resizeRaf = 0;
+		resize(false);
+	});
+}
+
+function resize(commit: boolean) {
 	const el = host.value;
 	if (!el || !renderer || !camera) return;
 	const w = Math.max(1, el.clientWidth);
 	const h = Math.max(1, el.clientHeight);
 	camera.aspect = w / h;
 	camera.updateProjectionMatrix();
-	renderer.setSize(w, h);
+	const canvas = renderer.domElement;
+	canvas.style.width = `${w}px`;
+	canvas.style.height = `${h}px`;
+	if (commit) {
+		clearTimeout(settleTimer);
+		renderer.setSize(w, h, false);
+		return;
+	}
+	clearTimeout(settleTimer);
+	settleTimer = window.setTimeout(() => resize(true), 80);
 }
 
 function pose() {
