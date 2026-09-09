@@ -2,8 +2,11 @@ import { parse as parseYaml } from 'yaml';
 import { parsePaper } from './paper';
 import { shapeFromRaw } from './shapes';
 import type {
+	AssemblyJoin,
 	Document,
+	Fold,
 	Leather,
+	Motion,
 	ParseResult,
 	Piece,
 	StitchRule,
@@ -90,7 +93,7 @@ function normalize(raw: unknown): Document {
 			margin: Number(layoutRaw.margin ?? 10),
 			placements,
 		},
-		assembly: Array.isArray(o.assembly) ? o.assembly : [],
+		assembly: assemblyFrom(o.assembly),
 	};
 }
 
@@ -117,9 +120,9 @@ function pieceFrom(
 		outline,
 		holes: holesRaw.map(shapeFromRaw),
 		stitch: stitchRaw.map((s) => stitchFrom(s, defaults)),
-		folds: Array.isArray(o.folds) ? (o.folds as Piece['folds']) : [],
+		folds: foldsFrom(o.folds),
 		hardware: Array.isArray(o.hardware) ? o.hardware : [],
-		motion: Array.isArray(o.motion) ? o.motion : [],
+		motion: motionsFrom(o.motion),
 	};
 }
 
@@ -134,4 +137,50 @@ function stitchFrom(raw: unknown, defaults: Document['defaults']): StitchRule {
 		start: Number(o.start ?? 0),
 		skip: Array.isArray(o.skip) ? (o.skip as Array<[number, number]>) : [],
 	};
+}
+
+function pair(v: unknown): [number, number] {
+	if (Array.isArray(v) && v.length >= 2) return [Number(v[0]), Number(v[1])];
+	return [0, 0];
+}
+
+function foldsFrom(raw: unknown): Fold[] {
+	if (!Array.isArray(raw)) return [];
+	return raw.map((f, i) => {
+		const o = (f ?? {}) as Record<string, unknown>;
+		return {
+			id: String(o.id ?? `fold-${i}`),
+			from: pair(o.from),
+			to: pair(o.to),
+			angle: Number(o.angle ?? 0),
+			hinge: o.hinge === 'mountain' ? 'mountain' : 'valley',
+		};
+	});
+}
+
+function motionsFrom(raw: unknown): Motion[] {
+	if (!Array.isArray(raw)) return [];
+	return raw.map((m, i) => {
+		const o = (m ?? {}) as Record<string, unknown>;
+		const foldsRaw =
+			o.folds && typeof o.folds === 'object' && !Array.isArray(o.folds)
+				? (o.folds as Record<string, unknown>)
+				: {};
+		const folds: Record<string, number> = {};
+		for (const [k, v] of Object.entries(foldsRaw)) folds[k] = Number(v);
+		return { id: String(o.id ?? `motion-${i}`), folds };
+	});
+}
+
+function assemblyFrom(raw: unknown): AssemblyJoin[] {
+	if (!Array.isArray(raw)) return [];
+	const out: AssemblyJoin[] = [];
+	for (const item of raw) {
+		if (!item || typeof item !== 'object') continue;
+		const o = item as Record<string, unknown>;
+		const a = String(o.a ?? '');
+		const b = String(o.b ?? '');
+		if (a && b) out.push({ a, b });
+	}
+	return out;
 }

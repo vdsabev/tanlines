@@ -20,13 +20,69 @@
 			</ToolbarButton>
 
 			<span class="text-stone-400">{{ filename }}</span>
+
+			<span class="ms-2 text-stone-400">view:</span>
+			<ToolbarButton :on="view === '2d'" @click="view = '2d'">2d</ToolbarButton>
+			<ToolbarButton :on="view === '3d'" @click="view = '3d'">3d</ToolbarButton>
+			<ToolbarButton :on="view === 'assembly'" @click="view = 'assembly'">
+				assembly
+			</ToolbarButton>
+			<template v-if="view === '3d'">
+				<ToolbarButton
+					v-for="id in pieceIds"
+					:key="id"
+					:on="pieceId === id"
+					@click="pieceId = id"
+				>
+					{{ id }}
+				</ToolbarButton>
+			</template>
+			<span v-if="view === 'assembly'" class="ms-1 text-stone-400">
+				<template v-if="joins.length">
+					join:
+					<template v-for="(j, i) in joins" :key="i">
+						<span v-if="i">, </span>
+						{{ j.a }} ↔ {{ j.b }}
+					</template>
+				</template>
+				<template v-else>join: none</template>
+			</span>
+			<label
+				v-for="m in viewMotions"
+				:key="m.id"
+				class="ms-2 flex items-center gap-1 text-stone-400"
+			>
+				{{ m.id }}
+				<input
+					class="accent-amber-400"
+					type="range"
+					min="0"
+					max="1"
+					step="0.01"
+					:value="motionT[m.id] ?? 0"
+					@input="onMotion(m.id, $event)"
+				/>
+				<span>{{ motionReadout(m) }}</span>
+			</label>
 		</header>
 
 		<div ref="splitEl" class="flex min-h-0 flex-1">
-			<div
-				class="min-h-0 min-w-0 flex-1 overflow-hidden bg-stone-900 [&_svg]:block [&_svg]:h-full [&_svg]:w-full"
-				v-html="svg"
-			/>
+			<div class="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-stone-900">
+				<div
+					v-show="view === '2d'"
+					class="h-full [&_svg]:block [&_svg]:h-full [&_svg]:w-full"
+					v-html="svg"
+				/>
+				<View3d
+					v-show="view !== '2d'"
+					:active="view !== '2d'"
+					:mode="view === 'assembly' ? 'assembly' : 'piece'"
+					:piece="activePiece"
+					:scene="lastScene"
+					:motions="viewMotions"
+					:motionT="motionT"
+				/>
+			</div>
 
 			<aside
 				v-show="!mobile || sidebarOpen"
@@ -114,13 +170,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ToolbarButton from './ToolbarButton.vue';
 import PaperSizeInput from './PaperSizeInput.vue';
+import View3d from '../view3d/View3d.vue';
 import { compile } from '../format/compile';
 import { parseDocument } from '../format/parse';
 import { paperPick, setLayoutPaper, type PaperPick } from '../format/paper';
 import { toSvg } from '../format/toSvg';
+import type { Motion, PieceGeom, Scene } from '../format/types';
+import { assemblyMotions } from '../view3d/assemble';
 import {
 	download,
 	loadSidebarOpen,
@@ -148,6 +207,25 @@ const paperW = ref(210);
 const paperH = ref(297);
 const customW = ref(210);
 const customH = ref(297);
+const view = ref<'2d' | '3d' | 'assembly'>('2d');
+const pieceId = ref('');
+const lastScene = ref<Scene | null>(null);
+const motionT = ref<Record<string, number>>({});
+const pieceIds = computed(() => [
+	...new Set(lastScene.value?.pieces.map((p) => p.id) ?? []),
+]);
+const activePiece = computed<PieceGeom | null>(() => {
+	const s = lastScene.value;
+	if (!s) return null;
+	return s.pieces.find((p) => p.id === pieceId.value) ?? s.pieces[0] ?? null;
+});
+const joins = computed(() => lastScene.value?.assembly ?? []);
+const viewMotions = computed<Motion[]>(() => {
+	if (view.value === '2d') return [];
+	if (view.value === 'assembly')
+		return lastScene.value ? assemblyMotions(lastScene.value) : [];
+	return activePiece.value?.motion ?? [];
+});
 let lastGoodSvg = '';
 let t = 0;
 let mq: MediaQueryList | null = null;
@@ -202,6 +280,29 @@ function onDragStart(e: PointerEvent) {
 	window.addEventListener('pointerup', onUp);
 }
 
+function onMotion(id: string, ev: Event) {
+	const n = Number((ev.target as HTMLInputElement).value);
+	motionT.value = { ...motionT.value, [id]: n };
+}
+
+function foldRest(id: string): number {
+	for (const p of lastScene.value?.pieces ?? []) {
+		const f = p.folds.find((x) => x.id === id);
+		if (f) return f.angle;
+	}
+	return 0;
+}
+
+function motionReadout(m: Motion): string {
+	const t = motionT.value[m.id] ?? 0;
+	return Object.entries(m.folds)
+		.map(([id, target]) => {
+			const rest = foldRest(id);
+			return `${Math.round(rest + (target - rest) * t)}°`;
+		})
+		.join(' ');
+}
+
 function onInput() {
 	clearTimeout(t);
 	t = window.setTimeout(compileNow, 50);
@@ -216,6 +317,13 @@ function compileNow() {
 	}
 	error.value = '';
 	const scene = compile(parsed.doc);
+	lastScene.value = scene;
+	if (!scene.pieces.some((p) => p.id === pieceId.value))
+		pieceId.value = scene.pieces[0]?.id ?? '';
+	const nextT = { ...motionT.value };
+	for (const m of assemblyMotions(scene))
+		if (nextT[m.id] == null) nextT[m.id] = 0;
+	motionT.value = nextT;
 	const n = scene.pieces.reduce((s, p) => s + p.stitchHoles.length, 0);
 	stitchNote.value = n === 1 ? '1 stitch hole' : `${n} stitch holes`;
 	lastGoodSvg = toSvg(scene);

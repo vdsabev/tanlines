@@ -26,6 +26,11 @@ export function toSvg(scene: Scene, selectedId?: string | null): string {
 				`<circle cx="${s.x}" cy="${s.y}" r="${s.d / 2}" fill="none" stroke="#111" stroke-width="0.2"/>`,
 			);
 		}
+		for (const f of p.folds) {
+			parts.push(
+				`<line x1="${f.from[0]}" y1="${f.from[1]}" x2="${f.to[0]}" y2="${f.to[1]}" stroke="#a33" stroke-width="0.25" stroke-dasharray="1.4 1"/>`,
+			);
+		}
 		parts.push(`</g>`);
 	}
 	parts.push('</svg>');

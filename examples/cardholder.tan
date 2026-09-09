@@ -32,6 +32,14 @@ pieces:
         to: [90, 35]
         angle: 90
         hinge: valley
+      - id: lip
+        from: [6, 0]
+        to: [84, 0]
+        angle: 0
+        hinge: valley
+    motion:
+      - id: open
+        folds: { spine: 30 }
   - id: flap
     side: front
     outline:
@@ -40,6 +48,12 @@ pieces:
       - along: outline
         inset: 3.5
         spacing: 4
+    folds:
+      - id: lip
+        from: [8, 40]
+        to: [82, 40]
+        angle: 0
+        hinge: valley
 
 layout:
   paper: A4
@@ -53,3 +67,7 @@ layout:
       x: 15
       y: 100
       rotate: 0
+
+assembly:
+  - a: body.lip
+    b: flap.lip

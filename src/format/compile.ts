@@ -13,9 +13,16 @@ export function compile(doc: Document): Scene {
 		const geom: PieceGeom = {
 			id: p.id,
 			color: p.side === 'back' ? shade(color, 0.7) : color,
+			thickness: doc.defaults.thickness,
+			side: p.side,
+			flip: p.transform.flip,
+			front: leather?.front ?? { roughness: 0.35, grain: 'fine' },
+			back: leather?.back ?? { roughness: 0.8, grain: 'suede' },
 			outline: shapeToPath(p.outline),
 			holes: p.holes.map(shapeToPath),
 			stitchHoles: [],
+			folds: p.folds,
+			motion: p.motion,
 		};
 		for (const rule of p.stitch) {
 			const shape = rule.along === 'outline' ? p.outline : p.holes[rule.along];
@@ -26,7 +33,12 @@ export function compile(doc: Document): Scene {
 		}
 		pieces.push({ ...geom, place });
 	}
-	return { paper: doc.layout.paper, margin: doc.layout.margin, pieces };
+	return {
+		paper: doc.layout.paper,
+		margin: doc.layout.margin,
+		pieces,
+		assembly: doc.assembly,
+	};
 }
 
 function shade(hex: string, k: number): string {

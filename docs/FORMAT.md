@@ -90,7 +90,19 @@ A rule, not a list of holes. `along` is `outline` or a hole index later.
 
 ## Folds, hardware, motion, assembly
 
-Stored in v1; 3D compiles them later. Fold `angle` is degrees. Hardware: `{ type: snap|rivet|button, at: [x, y], size? }`. Motion: named sets of hinge angles. `assembly` joins pieces by fold/edge id.
+Fold `angle` is the rest pose in degrees. An interior fold splits the piece; a fold on the outline is a join edge (no split). Valley hinges sit on the back face (thickness allowance); mountain on the front. The outer face wraps on a radius of `thickness` so the fold corner is round.
+
+Motion is a named map of fold id → angle. The 3D slider blends rest → that angle (0 = rest, 1 = motion). Hardware: `{ type: snap|rivet|button, at: [x, y], size? }` (drawn later).
+
+`assembly` joins two named folds, qualified as `pieceId.foldId`:
+
+```yaml
+assembly:
+  - a: body.lip
+    b: flap.lip
+```
+
+Empty `assembly` leaves each piece standalone in the assembly view.
 
 ## Paper
 

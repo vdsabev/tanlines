@@ -19,6 +19,12 @@ describe('parse', () => {
 		expect(r.doc.pieces.map((p) => p.id)).toEqual(['body', 'flap']);
 		expect(r.doc.layout.paper.name).toBe('A4');
 		expect(r.doc.layout.paper.w).toBe(210);
+		expect(r.doc.pieces[0].folds[0].id).toBe('spine');
+		expect(r.doc.pieces[0].motion[0]).toEqual({
+			id: 'open',
+			folds: { spine: 30 },
+		});
+		expect(r.doc.assembly).toEqual([{ a: 'body.lip', b: 'flap.lip' }]);
 	});
 
 	it('reports yaml errors', () => {
@@ -58,5 +64,10 @@ describe('compile', () => {
 		expect(scene.pieces).toHaveLength(2);
 		expect(scene.pieces[0].stitchHoles.length).toBeGreaterThan(8);
 		expect(scene.pieces[0].holes).toHaveLength(1);
+		expect(scene.pieces[0].thickness).toBe(2);
+		expect(scene.pieces[0].front.roughness).toBe(0.35);
+		expect(scene.pieces[0].back.roughness).toBe(0.8);
+		expect(scene.pieces[0].folds.map((f) => f.id)).toEqual(['spine', 'lip']);
+		expect(scene.assembly).toEqual([{ a: 'body.lip', b: 'flap.lip' }]);
 	});
 });

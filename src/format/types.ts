@@ -38,11 +38,21 @@ export type StitchRule = {
 };
 
 export type Fold = {
-	id?: string;
+	id: string;
 	from: [number, number];
 	to: [number, number];
 	angle: number;
 	hinge: 'valley' | 'mountain';
+};
+
+export type Motion = {
+	id: string;
+	folds: Record<string, number>;
+};
+
+export type AssemblyJoin = {
+	a: string;
+	b: string;
 };
 
 export type Piece = {
@@ -55,7 +65,7 @@ export type Piece = {
 	stitch: StitchRule[];
 	folds: Fold[];
 	hardware: unknown[];
-	motion: unknown[];
+	motion: Motion[];
 };
 
 export type Leather = {
@@ -88,7 +98,7 @@ export type Document = {
 		margin: number;
 		placements: Placement[];
 	};
-	assembly: unknown[];
+	assembly: AssemblyJoin[];
 };
 
 export type ParseError = { line: number; column: number; message: string };
@@ -123,13 +133,21 @@ export type PathCmd =
 export type PieceGeom = {
 	id: string;
 	color: string;
+	thickness: number;
+	side: 'front' | 'back';
+	flip: 'none' | 'x' | 'y';
+	front: { roughness: number; grain: string };
+	back: { roughness: number; grain: string };
 	outline: PathCmd[];
 	holes: PathCmd[][];
 	stitchHoles: Array<{ x: number; y: number; d: number }>;
+	folds: Fold[];
+	motion: Motion[];
 };
 
 export type Scene = {
 	paper: Paper;
 	margin: number;
 	pieces: Array<PieceGeom & { place: Placement }>;
+	assembly: AssemblyJoin[];
 };
