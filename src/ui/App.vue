@@ -90,12 +90,7 @@
 				:class="mobile ? 'absolute inset-0 z-10' : ''"
 				:style="mobile ? undefined : { width: sidebarW + 'px' }"
 			>
-				<textarea
-					v-model="text"
-					class="min-h-0 flex-1 border-l border-stone-700 resize-none bg-stone-900 p-2 text-stone-200 outline-none"
-					spellcheck="false"
-					@input="onInput"
-				/>
+				<YamlEditor v-model="text" @input="onInput" />
 
 				<div
 					v-if="!mobile"
@@ -173,6 +168,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ToolbarButton from './ToolbarButton.vue';
 import PaperSizeInput from './PaperSizeInput.vue';
+import YamlEditor from './YamlEditor.vue';
 import View3d from '../view3d/View3d.vue';
 import { compile } from '../format/compile';
 import { parseDocument } from '../format/parse';

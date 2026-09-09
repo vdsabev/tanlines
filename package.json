@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "pdf-lib": "^1.17.1",
+    "prismjs": "^1.30.0",
     "vue": "^3.5.41",
     "yaml": "^2.8.1"
   },
@@ -20,6 +21,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/bun": "^1.4.2",
     "@types/node": "^24.6.2",
+    "@types/prismjs": "^1.26.6",
     "@vitejs/plugin-vue": "^6.0.8",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",

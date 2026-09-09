@@ -1,1 +1,27 @@
 @import 'tailwindcss';
+
+.token.comment {
+	@apply text-stone-500;
+}
+.token.key,
+.token.atrule {
+	@apply text-amber-400;
+}
+.token.string,
+.token.scalar {
+	@apply text-stone-300;
+}
+.token.number,
+.token.boolean,
+.token.null,
+.token.datetime {
+	@apply text-lime-500;
+}
+.token.punctuation {
+	@apply text-stone-500;
+}
+.token.tag,
+.token.important,
+.token.directive {
+	@apply text-red-400;
+}
