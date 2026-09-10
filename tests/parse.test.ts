@@ -26,8 +26,6 @@ describe('parse', () => {
 			'underFront',
 			'left',
 			'right',
-			'seamLeft',
-			'seamRight',
 		]);
 		expect(r.doc.pieces[0].motion.map((m) => m.id)).toEqual([
 			'overBack',
@@ -77,30 +75,40 @@ describe('setLayoutPaper', () => {
 });
 
 describe('compile', () => {
-	it('emits one placed piece and two seam stitch runs', () => {
+	it('emits matching cross-stitch holes on flaps and underFront', () => {
 		const r = parseDocument(example);
 		expect(r.ok).toBe(true);
 		if (!r.ok) return;
 		const scene = compile(r.doc);
 		expect(scene.pieces).toHaveLength(1);
-		expect(scene.pieces[0].stitchRuns).toHaveLength(2);
-		expect(scene.pieces[0].stitchRuns[0].style).toBe('saddle');
-		expect(scene.pieces[0].stitchRuns[0].closed).toBe(false);
-		expect(scene.pieces[0].stitchRuns[1].closed).toBe(false);
-		expect(scene.pieces[0].stitchHoles.length).toBeGreaterThan(8);
-		expect(scene.pieces[0].holes).toHaveLength(0);
-		expect(scene.pieces[0].thickness).toBe(2);
-		expect(scene.pieces[0].front.roughness).toBe(0.35);
-		expect(scene.pieces[0].back.roughness).toBe(0.8);
-		expect(scene.pieces[0].folds.map((f) => f.id)).toEqual([
+		const p = scene.pieces[0];
+		expect(p.stitchRuns).toHaveLength(4);
+		expect(p.stitchRuns.every((run) => run.style === 'cross')).toBe(true);
+		expect(p.stitchRuns.every((run) => run.closed === false)).toBe(true);
+		expect(p.stitchRuns[0].pts.length).toBe(p.stitchRuns[1].pts.length);
+		expect(p.stitchRuns[2].pts.length).toBe(p.stitchRuns[3].pts.length);
+		expect(p.stitchRuns[0].pts.length).toBeGreaterThanOrEqual(2);
+		const ys = p.stitchRuns.flatMap((run) => run.pts.map((q) => q.y));
+		expect(Math.min(...ys)).toBeGreaterThan(48);
+		expect(Math.max(...ys)).toBeGreaterThan(114);
+		const along = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+			Math.hypot(b.x - a.x, b.y - a.y);
+		for (let i = 0; i < p.stitchRuns[0].pts.length; i++) {
+			expect(
+				along(p.stitchRuns[0].pts[0], p.stitchRuns[0].pts[i]),
+			).toBeCloseTo(along(p.stitchRuns[1].pts[0], p.stitchRuns[1].pts[i]));
+		}
+		expect(p.holes).toHaveLength(0);
+		expect(p.thickness).toBe(2);
+		expect(p.front.roughness).toBe(0.35);
+		expect(p.back.roughness).toBe(0.8);
+		expect(p.folds.map((f) => f.id)).toEqual([
 			'overBack',
 			'lid',
 			'underBack',
 			'underFront',
 			'left',
 			'right',
-			'seamLeft',
-			'seamRight',
 		]);
 		expect(scene.assembly).toEqual([]);
 	});

@@ -165,7 +165,7 @@ export function panelGroup(
 	const thread = threadMat(piece.stitchColor);
 	for (const run of stitches) {
 		const rHole = Math.max(0.15, run.hole / 2);
-		const rTh = Math.max(0.12, rHole * 0.42);
+		const rTh = Math.max(0.08, rHole * 0.28);
 		const zF = depth / 2 + rTh * 0.35;
 		const zB = -depth / 2 - rTh * 0.35;
 		const xyz = (p: Vec2, z: number) =>

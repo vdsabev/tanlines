@@ -1,4 +1,4 @@
-import { stitchCenters } from './stitch';
+import { stitchCenters, stitchOnEdges } from './stitch';
 import { shapeToPath } from './shapes';
 import type { Document, PieceGeom, Scene } from './types';
 
@@ -28,17 +28,24 @@ export function compile(doc: Document): Scene {
 			motion: p.motion,
 		};
 		for (const rule of p.stitch) {
-			const shape = rule.along === 'outline' ? p.outline : p.holes[rule.along];
-			if (!shape) continue;
-			const pts = stitchCenters(shape, rule);
-			geom.stitchRuns.push({
-				style: rule.style,
-				hole: rule.hole,
-				pts,
-				closed: rule.skip.length === 0,
-			});
-			for (const c of pts) {
-				geom.stitchHoles.push({ x: c.x, y: c.y, d: rule.hole });
+			const runs =
+				rule.edges.length > 0
+					? stitchOnEdges(rule)
+					: (() => {
+							const shape =
+								rule.along === 'outline' ? p.outline : p.holes[rule.along];
+							return shape ? [stitchCenters(shape, rule)] : [];
+						})();
+			for (const pts of runs) {
+				geom.stitchRuns.push({
+					style: rule.style,
+					hole: rule.hole,
+					pts,
+					closed: rule.edges.length === 0 && rule.skip.length === 0,
+				});
+				for (const c of pts) {
+					geom.stitchHoles.push({ x: c.x, y: c.y, d: rule.hole });
+				}
 			}
 		}
 		pieces.push({ ...geom, place });

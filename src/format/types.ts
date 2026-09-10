@@ -28,10 +28,16 @@ export type PathShape = {
 
 export type Shape = RectShape | EllipseShape | PathShape;
 
-export type StitchStyle = 'saddle' | 'running' | 'box';
+export type StitchStyle = 'saddle' | 'running' | 'box' | 'cross';
+
+export type StitchEdge = {
+	from: [number, number];
+	to: [number, number];
+};
 
 export type StitchRule = {
 	along: 'outline' | number;
+	edges: StitchEdge[];
 	inset: number;
 	spacing: number;
 	hole: number;

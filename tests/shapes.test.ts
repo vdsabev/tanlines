@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { shapeFromRaw, shapeToPath } from '../src/format/shapes';
 import { pathToD, ptsToPath } from '../src/format/pathD';
 import { samplePath } from '../src/format/sample';
-import { stitchCenters } from '../src/format/stitch';
+import { stitchCenters, stitchOnEdges } from '../src/format/stitch';
 
 describe('rect', () => {
 	it('round corners use arcs', () => {
@@ -42,11 +42,13 @@ describe('stitch', () => {
 		const s = shapeFromRaw({ rect: { w: 90, h: 70, r: 6 } });
 		const holes = stitchCenters(s, {
 			along: 'outline',
+			edges: [],
 			inset: 3.5,
 			spacing: 3.5,
 			hole: 1,
 			start: 0,
 			skip: [],
+			style: 'saddle',
 		});
 		expect(holes.length).toBeGreaterThan(20);
 		const first = holes[0];
@@ -54,6 +56,29 @@ describe('stitch', () => {
 		const dist = Math.hypot(second.x - first.x, second.y - first.y);
 		expect(dist).toBeGreaterThan(3);
 		expect(dist).toBeLessThan(4.2);
+	});
+
+	it('cross edges share distances from the corner', () => {
+		const [flap, wall] = stitchOnEdges({
+			along: 'outline',
+			style: 'cross',
+			inset: 3.5,
+			spacing: 3.5,
+			hole: 1,
+			start: 3.5,
+			skip: [],
+			edges: [
+				{ from: [3.5, 99.5], to: [3.5, 52.5] },
+				{ from: [13.5, 117.5], to: [13.5, 166.5] },
+			],
+		});
+		expect(flap.length).toBe(wall.length);
+		expect(flap.length).toBeGreaterThanOrEqual(2);
+		for (let i = 0; i < flap.length; i++) {
+			const da = Math.hypot(flap[i].x - flap[0].x, flap[i].y - flap[0].y);
+			const db = Math.hypot(wall[i].x - wall[0].x, wall[i].y - wall[0].y);
+			expect(da).toBeCloseTo(db);
+		}
 	});
 });
 

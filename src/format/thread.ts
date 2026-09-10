@@ -13,7 +13,7 @@ export type StitchCrossing = {
 };
 
 export function stitchStyle(raw: unknown): StitchStyle {
-	if (raw === 'running' || raw === 'box') return raw;
+	if (raw === 'running' || raw === 'box' || raw === 'cross') return raw;
 	return 'saddle';
 }
 

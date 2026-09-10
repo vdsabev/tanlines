@@ -24,10 +24,14 @@
 			<span class="ms-2 text-stone-400">view:</span>
 			<ToolbarButton :on="view === '2d'" @click="view = '2d'">2d</ToolbarButton>
 			<ToolbarButton :on="view === '3d'" @click="view = '3d'">3d</ToolbarButton>
-			<ToolbarButton :on="view === 'assembly'" @click="view = 'assembly'">
+			<ToolbarButton
+				v-if="pieceIds.length > 1"
+				:on="view === 'assembly'"
+				@click="view = 'assembly'"
+			>
 				assembly
 			</ToolbarButton>
-			<template v-if="view === '3d'">
+			<template v-if="view === '3d' && pieceIds.length > 1">
 				<ToolbarButton
 					v-for="id in pieceIds"
 					:key="id"
@@ -56,11 +60,11 @@
 				<input
 					class="accent-amber-400"
 					type="range"
-					min="0"
-					max="1"
-					step="0.01"
-					:value="motionT[m.id] ?? 0"
-					@input="onMotion(m.id, $event)"
+					:min="motionSlider(m).min"
+					:max="motionSlider(m).max"
+					step="1"
+					:value="motionSlider(m).value"
+					@input="onMotion(m, $event)"
 				/>
 				<span>{{ motionReadout(m) }}</span>
 			</label>
@@ -176,6 +180,7 @@ import { paperPick, setLayoutPaper, type PaperPick } from '../format/paper';
 import { toSvg } from '../format/toSvg';
 import type { Motion, PieceGeom, Scene } from '../format/types';
 import { assemblyMotions } from '../view3d/assemble';
+import { foldPose, foldPoseT, motionTarget } from '../format/pose';
 import {
 	download,
 	loadSidebarOpen,
@@ -276,9 +281,32 @@ function onDragStart(e: PointerEvent) {
 	window.addEventListener('pointerup', onUp);
 }
 
-function onMotion(id: string, ev: Event) {
-	const n = Number((ev.target as HTMLInputElement).value);
-	motionT.value = { ...motionT.value, [id]: n };
+function motionPrimary(m: Motion): { rest: number; motion: number } | null {
+	const id = Object.keys(m.folds)[0];
+	if (id == null) return null;
+	return { rest: foldRest(id), motion: m.folds[id] };
+}
+
+function motionSlider(m: Motion): { min: number; max: number; value: number } {
+	const p = motionPrimary(m);
+	if (!p) return { min: 0, max: 1, value: 0 };
+	const target = motionTarget(p.rest, p.motion);
+	const t = motionT.value[m.id] ?? 0;
+	const value = foldPose(p.rest, p.motion, t);
+	const min = Math.min(p.rest, target);
+	const max = Math.max(p.rest, target);
+	if (min === max) return { min, max: min + 1, value };
+	return { min, max, value };
+}
+
+function onMotion(m: Motion, ev: Event) {
+	const p = motionPrimary(m);
+	if (!p) return;
+	const angle = Number((ev.target as HTMLInputElement).value);
+	motionT.value = {
+		...motionT.value,
+		[m.id]: foldPoseT(p.rest, p.motion, angle),
+	};
 }
 
 function foldRest(id: string): number {
@@ -294,7 +322,7 @@ function motionReadout(m: Motion): string {
 	return Object.entries(m.folds)
 		.map(([id, target]) => {
 			const rest = foldRest(id);
-			return `${Math.round(rest + (target - rest) * t)}°`;
+			return `${Math.round(foldPose(rest, target, t))}°`;
 		})
 		.join(' ');
 }
@@ -316,6 +344,8 @@ function compileNow() {
 	lastScene.value = scene;
 	if (!scene.pieces.some((p) => p.id === pieceId.value))
 		pieceId.value = scene.pieces[0]?.id ?? '';
+	const nPieces = new Set(scene.pieces.map((p) => p.id)).size;
+	if (nPieces <= 1 && view.value === 'assembly') view.value = '3d';
 	const nextT = { ...motionT.value };
 	for (const m of assemblyMotions(scene))
 		if (nextT[m.id] == null) nextT[m.id] = 0;

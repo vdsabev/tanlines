@@ -7,7 +7,7 @@ defaults:
     inset: 3.5
     spacing: 3.5
     hole: 1
-    style: saddle
+    style: cross
     color: "#e8d4a0"
 
 leathers:
@@ -49,53 +49,49 @@ pieces:
           L 98 48
           L 98 49
           Z
+    # Vertical seam: flap outer longs meet underFront sides after the walls fold.
+    # t=0 is the underBack-adjacent corner on each edge so holes pair when folded.
     stitch:
-      - along: outline
+      - style: cross
         start: 3.5
-        skip: [[54, 9999]]
-      - along: outline
-        start: 299.5
-        skip: [[0, 299], [350, 9999]]
+        edges:
+          - { from: [3.5, 99.5], to: [3.5, 52.5] }
+          - { from: [13.5, 117.5], to: [13.5, 166.5] }
+      - style: cross
+        start: 3.5
+        edges:
+          - { from: [104.5, 99.5], to: [104.5, 52.5] }
+          - { from: [94.5, 117.5], to: [94.5, 166.5] }
     folds:
       - id: overBack
         from: [10, 48]
         to: [98, 48]
-        angle: 0
+        angle: 90
         hinge: valley
       - id: lid
         from: [10, 36]
         to: [98, 36]
-        angle: 0
+        angle: 90
         hinge: valley
       - id: underBack
         from: [10, 104]
         to: [98, 104]
-        angle: 0
+        angle: 90
         hinge: valley
       - id: underFront
         from: [10, 114]
         to: [98, 114]
-        angle: 0
+        angle: 90
         hinge: valley
       - id: left
         from: [10, 49]
         to: [10, 103]
-        angle: 0
+        angle: 90
         hinge: valley
       - id: right
         from: [98, 49]
         to: [98, 103]
-        angle: 0
-        hinge: valley
-      - id: seamLeft
-        from: [0, 49]
-        to: [0, 103]
-        angle: 0
-        hinge: valley
-      - id: seamRight
-        from: [108, 49]
-        to: [108, 103]
-        angle: 0
+        angle: 90
         hinge: valley
     hardware:
       - type: snap

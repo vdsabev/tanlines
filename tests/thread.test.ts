@@ -46,6 +46,15 @@ describe('stitchPairs', () => {
 			[1, 2],
 		]);
 	});
+
+	it('cross fills every gap on both faces, like saddle', () => {
+		const p = stitchPairs(3, false, 'cross');
+		expect(p.front).toEqual([
+			[0, 1],
+			[1, 2],
+		]);
+		expect(p.back).toEqual(p.front);
+	});
 });
 
 describe('splitStitchRuns', () => {

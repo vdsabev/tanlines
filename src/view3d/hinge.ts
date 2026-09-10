@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { samplePath } from '../format/sample';
-import { stitchCrossings, splitStitchRuns } from '../format/thread';
+import { splitStitchRuns } from '../format/thread';
 import { centroid, polyArea, signedDist, splitRing } from '../format/split';
 import type {
 	Fold,
@@ -11,15 +11,15 @@ import type {
 	StitchRun,
 	Vec2,
 } from '../format/types';
-import { makeFoldBend, setBendAngle, setStitchWrap } from './bend';
-import { addThreadSeg, panelGroup, pieceOrigin, threadMat } from './extrude';
+import { foldPose } from '../format/pose';
+import { makeFoldBend, setBendAngle } from './bend';
+import { panelGroup, pieceOrigin } from './extrude';
 
 export type HingeData = {
 	id: string;
 	rest: number;
 	sign: number;
 	bend?: THREE.Mesh;
-	stitchWrap?: THREE.Group;
 };
 
 type Region = {
@@ -168,87 +168,13 @@ function makeHinge(
 		T * (frontLocal.z < 0 ? -1 : 1) * (fold.hinge === 'mountain' ? -1 : 1);
 	const bend = makeFoldBend(piece, fold, length, radius);
 	group.add(bend);
-	const stitchWrap = new THREE.Group();
-	group.add(stitchWrap);
 	rot.userData.hinge = {
 		id: fold.id,
 		rest: fold.angle,
 		sign: 1,
 		bend,
-		stitchWrap,
 	} as HingeData;
 	return { group, rot, inner };
-}
-
-function piecePt(
-	p: { x: number; y: number },
-	origin: { cx: number; cy: number },
-	z: number,
-) {
-	return new THREE.Vector3(p.x - origin.cx, -(p.y - origin.cy), z);
-}
-
-function addFoldStitch(
-	piece: PieceGeom,
-	runs: StitchRun[],
-	from: Vec2,
-	to: Vec2,
-	parentPos: boolean,
-	mountain: boolean,
-	origin: { cx: number; cy: number },
-	parentG: THREE.Group,
-	childG: THREE.Group,
-	hinge: HingeData,
-) {
-	const xs = stitchCrossings(runs, from, to);
-	if (!xs.length || !hinge.stitchWrap || !hinge.bend) return;
-	const T = Math.max(0.2, piece.thickness);
-	const mat = threadMat(piece.stitchColor);
-	const alongs: number[] = [];
-	let rTh = 0.12;
-	for (const x of xs) {
-		rTh = Math.max(0.12, (x.hole / 2) * 0.42);
-		const zF = T / 2 + rTh * 0.35;
-		const zB = -T / 2 - rTh * 0.35;
-		const aOnParent = signedDist(x.a, from, to) >= 0 === parentPos;
-		const aRoot = aOnParent ? parentG : childG;
-		const bRoot = aOnParent ? childG : parentG;
-		if (x.front) {
-			addThreadSeg(
-				aRoot,
-				piecePt(x.a, origin, zF),
-				piecePt(x.q, origin, zF),
-				rTh,
-				mat,
-			);
-			addThreadSeg(
-				bRoot,
-				piecePt(x.b, origin, zF),
-				piecePt(x.q, origin, zF),
-				rTh,
-				mat,
-			);
-		}
-		if (x.back) {
-			addThreadSeg(
-				aRoot,
-				piecePt(x.a, origin, zB),
-				piecePt(x.q, origin, zB),
-				rTh,
-				mat,
-			);
-			addThreadSeg(
-				bRoot,
-				piecePt(x.b, origin, zB),
-				piecePt(x.q, origin, zB),
-				rTh,
-				mat,
-			);
-		}
-		if (mountain ? x.back : x.front) alongs.push(x.along);
-	}
-	const radius = (hinge.bend.userData.foldBend as { radius: number }).radius;
-	hinge.stitchWrap.userData.stitchWrap = { alongs, radius, rTh, mat };
 }
 
 function fixSign(rot: THREE.Group, inner: THREE.Group, fold: Fold) {
@@ -332,18 +258,6 @@ function build(
 		const { group, rot, inner } = makeHinge(piece, fold, child, origin);
 		inner.add(build(piece, child, rest, origin, { from, to }));
 		fixSign(rot, inner, fold);
-		addFoldStitch(
-			piece,
-			region.stitches,
-			from,
-			to,
-			parent === posR,
-			fold.hinge === 'mountain',
-			origin,
-			g,
-			inner,
-			rot.userData.hinge as HingeData,
-		);
 		g.add(group);
 		return g;
 	}
@@ -395,11 +309,10 @@ export function applyMotions(
 		for (const m of motions) {
 			if (m.folds[h.id] == null) continue;
 			const t = tById[m.id] ?? 0;
-			angle = h.rest + (m.folds[h.id] - h.rest) * t;
+			angle = foldPose(h.rest, m.folds[h.id], t);
 		}
 		const rad = h.sign * THREE.MathUtils.degToRad(angle);
 		(o as THREE.Group).rotation.x = rad;
 		if (h.bend) setBendAngle(h.bend, rad);
-		if (h.stitchWrap) setStitchWrap(h.stitchWrap, rad);
 	});
 }

@@ -132,9 +132,14 @@ function pieceFrom(
 
 function stitchFrom(raw: unknown, defaults: Document['defaults']): StitchRule {
 	const o = (raw ?? {}) as Record<string, unknown>;
+	const edgesRaw = Array.isArray(o.edges) ? o.edges : [];
 	return {
 		along:
 			o.along === 'outline' || o.along == null ? 'outline' : Number(o.along),
+		edges: edgesRaw.map((e) => {
+			const r = (e ?? {}) as Record<string, unknown>;
+			return { from: pair(r.from), to: pair(r.to) };
+		}),
 		inset: Number(o.inset ?? defaults.stitch.inset),
 		spacing: Number(o.spacing ?? defaults.stitch.spacing),
 		hole: Number(o.hole ?? defaults.stitch.hole),
