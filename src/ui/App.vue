@@ -15,9 +15,19 @@
 				/>
 			</ToolbarButton>
 
-			<span class="min-w-0 max-w-[30vw] shrink-0 truncate text-stone-400">{{
-				filename
-			}}</span>
+		<select
+			class="min-w-0 max-w-[30vw] shrink-0 truncate border border-stone-700 bg-stone-900 px-1 py-0.5 text-stone-400"
+			:value="filename"
+			title="example"
+			@change="onSelectExample"
+		>
+			<option v-for="name in exampleNames" :key="name" :value="name">
+				{{ name }}
+			</option>
+			<option v-if="!exampleNames.includes(filename)" :value="filename">
+				{{ filename }}
+			</option>
+		</select>
 			<span
 				v-if="error"
 				class="ms-auto min-w-0 flex-1 truncate text-right text-red-400"
@@ -246,11 +256,14 @@ import {
 	saveStored,
 	SIDEBAR_W_MIN,
 } from '../persist';
-// TODO: example-selector dropdown fetching hosted .tan files (serve examples/ from dist).
-import example from '../../examples/cardholder.tan?raw';
+// New examples go in public/examples/ (hosted at <base>/examples/) and in exampleNames.
+import example from '../../public/examples/cardholder.tan?raw';
 
+const exampleNames = ['cardholder.tan'];
 const text = ref(example);
 const filename = ref('cardholder.tan');
+// Last content the user chose to load; anything else is unsaved work.
+let savedSnapshot = example;
 const error = ref('');
 const svg = ref('');
 const printSvg = ref('');
@@ -299,6 +312,7 @@ onMounted(() => {
 		text.value = stored.text;
 		filename.value = stored.filename;
 	}
+	savedSnapshot = text.value;
 	compileNow();
 	mq = window.matchMedia('(max-width: 767px)');
 	mobile.value = mq.matches;
@@ -481,18 +495,53 @@ function onCustomDim(ev: Event, axis: 'w' | 'h') {
 	compileNow();
 }
 
+function confirmDiscard(): boolean {
+	if (text.value === savedSnapshot) return true;
+	return window.confirm('You have unsaved changes. Discard them?');
+}
+
+async function onSelectExample(ev: Event) {
+	const sel = ev.target as HTMLSelectElement;
+	const name = sel.value;
+	if (name === filename.value) return;
+	if (!confirmDiscard()) {
+		sel.value = filename.value;
+		return;
+	}
+	try {
+		const res = await fetch(`${import.meta.env.BASE_URL}examples/${name}`);
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		text.value = await res.text();
+	} catch {
+		if (name === 'cardholder.tan') text.value = example;
+		else {
+			sel.value = filename.value;
+			return;
+		}
+	}
+	filename.value = name;
+	savedSnapshot = text.value;
+	compileNow();
+}
+
 function onNew() {
+	if (!confirmDiscard()) return;
 	text.value = example;
 	filename.value = 'pattern.tan';
+	savedSnapshot = text.value;
 	compileNow();
 }
 
 function onOpen(ev: Event) {
-	const file = (ev.target as HTMLInputElement).files?.[0];
+	const input = ev.target as HTMLInputElement;
+	const file = input.files?.[0];
+	input.value = '';
 	if (!file) return;
+	if (!confirmDiscard()) return;
 	file.text().then((s) => {
 		text.value = s;
 		filename.value = file.name;
+		savedSnapshot = s;
 		compileNow();
 	});
 }

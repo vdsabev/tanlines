@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const example = readFileSync(
-	join(dirname(fileURLToPath(import.meta.url)), '../examples/cardholder.tan'),
+	join(dirname(fileURLToPath(import.meta.url)), '../public/examples/cardholder.tan'),
 	'utf8',
 );
 
