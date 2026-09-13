@@ -4,6 +4,8 @@ Leather pattern editor. Type YAML (`.tan`), preview 1:1 mm on a sheet, export SV
 
 Spec: `docs/FORMAT.md`. Example: `public/examples/cardholder.tan`.
 
+Share a pattern: append `?src=<encoded-url>`; the example dropdown links there too.
+
 ```
 bun install
 bun run dev

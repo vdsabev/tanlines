@@ -232,6 +232,7 @@ import ToolbarButton from './ToolbarButton.vue';
 import ExportButton, { type ExportFormat } from './ExportButton.vue';
 import PaperSizeInput from './PaperSizeInput.vue';
 import YamlEditor from './YamlEditor.vue';
+import { starterText } from './starter';
 import View3d from '../view3d/View3d.vue';
 import { compile } from '../format/compile';
 import { parseDocument } from '../format/parse';
@@ -292,8 +293,20 @@ let t = 0;
 let mq: MediaQueryList | null = null;
 
 onMounted(() => {
-	const stored = loadStored();
-	if (stored) {
+	const srcParam = new URLSearchParams(window.location.search).get('src');
+	const stored = srcParam ? null : loadStored();
+	if (srcParam) {
+		fetch(srcParam)
+			.then(async (res) => {
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				text.value = await res.text();
+				filename.value = filenameFromUrl(srcParam);
+				compileNow();
+			})
+			.catch(() => {
+				error.value = `could not load ${srcParam}`;
+			});
+	} else if (stored) {
 		text.value = stored.text;
 		filename.value = stored.filename;
 		compileNow();
@@ -487,6 +500,16 @@ function confirmDiscard(): boolean {
 	return window.confirm('Discard the current document?');
 }
 
+function filenameFromUrl(url: string): string {
+	try {
+		const seg = new URL(url, window.location.href).pathname.split('/').pop();
+		if (seg) return seg;
+	} catch {
+		// fall through to default
+	}
+	return 'shared.tan';
+}
+
 async function fetchExample(name: string): Promise<string | null> {
 	try {
 		const res = await fetch(`${import.meta.env.BASE_URL}examples/${name}`);
@@ -497,7 +520,7 @@ async function fetchExample(name: string): Promise<string | null> {
 	}
 }
 
-async function onSelectExample(ev: Event) {
+function onSelectExample(ev: Event) {
 	const sel = ev.target as HTMLSelectElement;
 	const name = sel.value;
 	if (name === filename.value) return;
@@ -505,22 +528,22 @@ async function onSelectExample(ev: Event) {
 		sel.value = filename.value;
 		return;
 	}
-	const content = await fetchExample(name);
-	if (content == null) {
-		sel.value = filename.value;
-		return;
-	}
-	text.value = content;
-	filename.value = name;
-	compileNow();
+	const url = new URL(
+		`${import.meta.env.BASE_URL}examples/${name}`,
+		window.location.href,
+	).href;
+	window.location.href = `${window.location.pathname}?src=${encodeURIComponent(url)}`;
 }
 
-async function onNew() {
+function clearSrc() {
+	window.history.replaceState(null, '', window.location.pathname);
+}
+
+function onNew() {
 	if (!confirmDiscard()) return;
-	const content = await fetchExample('cardholder.tan');
-	if (content == null) return;
-	text.value = content;
+	text.value = starterText;
 	filename.value = 'pattern.tan';
+	clearSrc();
 	compileNow();
 }
 
@@ -533,6 +556,7 @@ function onOpen(ev: Event) {
 	file.text().then((s) => {
 		text.value = s;
 		filename.value = file.name;
+		clearSrc();
 		compileNow();
 	});
 }
