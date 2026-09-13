@@ -15,19 +15,19 @@
 				/>
 			</ToolbarButton>
 
-		<select
-			class="min-w-0 max-w-[30vw] shrink-0 truncate border border-stone-700 bg-stone-900 px-1 py-0.5 text-stone-400"
-			:value="filename"
-			title="example"
-			@change="onSelectExample"
-		>
-			<option v-for="name in exampleNames" :key="name" :value="name">
-				{{ name }}
-			</option>
-			<option v-if="!exampleNames.includes(filename)" :value="filename">
-				{{ filename }}
-			</option>
-		</select>
+			<select
+				class="h-[29px] min-w-0 max-w-[30vw] shrink-0 truncate rounded-none border border-stone-600 bg-stone-900 px-2 py-1 whitespace-nowrap text-stone-400"
+				:value="filename"
+				title="example"
+				@change="onSelectExample"
+			>
+				<option v-for="name in exampleNames" :key="name" :value="name">
+					{{ name }}
+				</option>
+				<option v-if="!exampleNames.includes(filename)" :value="filename">
+					{{ filename }}
+				</option>
+			</select>
 			<span
 				v-if="error"
 				class="ms-auto min-w-0 flex-1 truncate text-right text-red-400"
@@ -64,12 +64,17 @@
 				/>
 
 				<div
-					class="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap gap-1 p-1.5 print:hidden"
+					class="pointer-events-none absolute inset-x-0 top-0 flex p-1.5 print:hidden"
 				>
 					<div
-						class="pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-stone-700/80 bg-stone-950/60 px-1.5 py-1 backdrop-blur"
+						class="pointer-events-auto rounded border border-stone-700/80 bg-stone-950/60 backdrop-blur"
 					>
-						<span class="flex flex-wrap items-center gap-1">
+						<div class="flex items-center gap-1 px-1.5 py-1">
+							<ToolbarButton
+								:title="expanded ? 'collapse panel' : 'expand panel'"
+								@click="expanded = !expanded"
+								>{{ expanded ? '▾' : '▸' }}</ToolbarButton
+							>
 							<ToolbarButton :on="view === '2d'" @click="view = '2d'"
 								>2d</ToolbarButton
 							>
@@ -83,64 +88,99 @@
 							>
 								assembly
 							</ToolbarButton>
-							<template v-if="view === '3d' && pieceIds.length > 1">
-								<ToolbarButton
-									v-for="id in pieceIds"
-									:key="id"
-									:on="pieceId === id"
-									@click="pieceId = id"
-								>
-									{{ id }}
-								</ToolbarButton>
-							</template>
-							<span v-if="view === 'assembly'" class="text-stone-400">
-								<template v-if="joins.length">
-									join:
-									<template v-for="(j, i) in joins" :key="i">
-										<span v-if="i">, </span>{{ j.a }} ↔ {{ j.b }}
-									</template>
-								</template>
-								<template v-else>join: none</template>
-							</span>
-						</span>
-
-						<span class="flex flex-wrap items-center gap-1">
-							<span class="text-stone-500">paper:</span>
-							<select
-								class="border border-stone-600 bg-stone-900 px-1 py-0.5 text-stone-200"
-								:value="paperKind"
-								@change="
-									setPaper(
-										($event.target as HTMLSelectElement).value as PaperPick,
-									)
-								"
+						</div>
+						<div
+							v-if="expanded"
+							class="border-t border-stone-700/80 px-1.5 py-1"
+						>
+							<span
+								v-if="view === '2d'"
+								class="flex flex-wrap items-center gap-1"
 							>
-								<option v-for="p in paperNames" :key="p" :value="p">
-									{{ p }}
-								</option>
-							</select>
-							<template v-if="paperKind === 'custom'">
-								<PaperSizeInput
-									type="number"
-									min="1"
-									step="1"
-									:value="customW"
-									@change="onCustomDim($event, 'w')"
-								/>
-								<span class="text-stone-400">×</span>
-								<PaperSizeInput
-									type="number"
-									min="1"
-									step="1"
-									:value="customH"
-									@change="onCustomDim($event, 'h')"
-								/>
-								<span class="text-stone-400">mm</span>
-							</template>
-							<span v-else class="text-stone-400">
-								{{ paperW }}×{{ paperH }}mm
+								<span class="text-stone-500">paper:</span>
+								<select
+									class="border border-stone-600 bg-stone-900 px-1 py-0.5 text-stone-200"
+									:value="paperKind"
+									@change="
+										setPaper(
+											($event.target as HTMLSelectElement).value as PaperPick,
+										)
+									"
+								>
+									<option v-for="p in paperNames" :key="p" :value="p">
+										{{ p }}
+									</option>
+								</select>
+								<template v-if="paperKind === 'custom'">
+									<PaperSizeInput
+										type="number"
+										min="1"
+										step="1"
+										:value="customW"
+										@change="onCustomDim($event, 'w')"
+									/>
+									<span class="text-stone-400">×</span>
+									<PaperSizeInput
+										type="number"
+										min="1"
+										step="1"
+										:value="customH"
+										@change="onCustomDim($event, 'h')"
+									/>
+									<span class="text-stone-400">mm</span>
+								</template>
+								<span v-else class="text-stone-400">
+									{{ paperW }}×{{ paperH }}mm
+								</span>
 							</span>
-						</span>
+
+							<div v-else class="w-64">
+								<div
+									v-if="view === '3d' && pieceIds.length > 1"
+									class="mb-1 flex flex-wrap gap-1"
+								>
+									<ToolbarButton
+										v-for="id in pieceIds"
+										:key="id"
+										:on="pieceId === id"
+										@click="pieceId = id"
+									>
+										{{ id }}
+									</ToolbarButton>
+								</div>
+								<p v-if="view === 'assembly'" class="mb-1 text-stone-400">
+									<template v-if="joins.length">
+										join:
+										<template v-for="(j, i) in joins" :key="i">
+											<span v-if="i">, </span>{{ j.a }} ↔ {{ j.b }}
+										</template>
+									</template>
+									<template v-else>join: none</template>
+								</p>
+								<label
+									v-for="m in viewMotions"
+									:key="m.id"
+									class="mb-2 flex items-center gap-2 text-stone-400"
+								>
+									<span class="w-16 shrink-0 truncate">{{ m.id }}</span>
+									<input
+										class="min-w-0 flex-1 accent-amber-400"
+										type="range"
+										:min="motionSlider(m).min"
+										:max="motionSlider(m).max"
+										step="1"
+										:value="motionSlider(m).value"
+										@input="onMotion(m, $event)"
+									/>
+									<span class="w-16 shrink-0 text-right text-stone-200">{{
+										motionReadout(m)
+									}}</span>
+								</label>
+								<p v-if="!viewMotions.length" class="text-stone-500">
+									no 3d motions
+								</p>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -151,48 +191,7 @@
 				:class="mobile ? 'min-w-0 flex-1' : ''"
 				:style="mobile ? undefined : { width: sidebarW + 'px' }"
 			>
-				<div
-					class="hidden gap-1 border-b border-l border-stone-700 px-1.5 py-1 md:flex"
-				>
-					<ToolbarButton :on="panel === 'code'" @click="setPanel('code')">
-						code
-					</ToolbarButton>
-					<ToolbarButton
-						:on="panel === 'controls'"
-						@click="setPanel('controls')"
-					>
-						controls
-					</ToolbarButton>
-				</div>
-				<YamlEditor
-					v-if="sideTab === 'code'"
-					v-model="text"
-					@input="onInput"
-				/>
-				<ControlPanel v-else>
-					<label
-						v-for="m in viewMotions"
-						:key="m.id"
-						class="mb-2 flex items-center gap-2 text-stone-400"
-					>
-						<span class="w-16 shrink-0 truncate">{{ m.id }}</span>
-						<input
-							class="min-w-0 flex-1 accent-amber-400"
-							type="range"
-							:min="motionSlider(m).min"
-							:max="motionSlider(m).max"
-							step="1"
-							:value="motionSlider(m).value"
-							@input="onMotion(m, $event)"
-						/>
-						<span class="w-16 shrink-0 text-right text-stone-200">{{
-							motionReadout(m)
-						}}</span>
-					</label>
-					<p v-if="!viewMotions.length" class="text-stone-500">
-						no 3d motions
-					</p>
-				</ControlPanel>
+				<YamlEditor v-model="text" @input="onInput" />
 
 				<div
 					v-if="!mobile"
@@ -223,12 +222,6 @@
 				@click="setMobileTab('code')"
 				>code</ToolbarButton
 			>
-			<ToolbarButton
-				class="flex-1 text-center"
-				:on="mobileTab === 'controls'"
-				@click="setMobileTab('controls')"
-				>controls</ToolbarButton
-			>
 		</nav>
 	</div>
 </template>
@@ -239,7 +232,6 @@ import ToolbarButton from './ToolbarButton.vue';
 import ExportButton, { type ExportFormat } from './ExportButton.vue';
 import PaperSizeInput from './PaperSizeInput.vue';
 import YamlEditor from './YamlEditor.vue';
-import ControlPanel from './ControlPanel.vue';
 import View3d from '../view3d/View3d.vue';
 import { compile } from '../format/compile';
 import { parseDocument } from '../format/parse';
@@ -257,18 +249,16 @@ import {
 	SIDEBAR_W_MIN,
 } from '../persist';
 // New examples go in public/examples/ (hosted at <base>/examples/) and in exampleNames.
-const exampleNames = ['cardholder.tan'];
+const exampleNames = ['cardholder.tan', 'bookmark.tan', 'foldcard.tan'];
 const text = ref('');
 const filename = ref('cardholder.tan');
-// Last content the user chose to load; anything else is unsaved work.
-let savedSnapshot = '';
 const error = ref('');
 const svg = ref('');
 const printSvg = ref('');
 const stitchNote = ref('');
 const sidebarW = ref(loadSidebarW());
-const panel = ref<'code' | 'controls'>('code');
-const mobileTab = ref<'view' | 'code' | 'controls'>('view');
+const mobileTab = ref<'view' | 'code'>('view');
+const expanded = ref(true);
 const mobile = ref(false);
 const splitEl = ref<HTMLElement | null>(null);
 const printSheetEl = ref<HTMLElement | null>(null);
@@ -291,9 +281,6 @@ const activePiece = computed<PieceGeom | null>(() => {
 	return s.pieces.find((p) => p.id === pieceId.value) ?? s.pieces[0] ?? null;
 });
 const joins = computed(() => lastScene.value?.assembly ?? []);
-const sideTab = computed<'code' | 'controls'>(() =>
-	mobile.value && mobileTab.value !== 'view' ? mobileTab.value : panel.value,
-);
 const viewMotions = computed<Motion[]>(() => {
 	if (view.value === '2d') return [];
 	if (view.value === 'assembly')
@@ -309,7 +296,6 @@ onMounted(() => {
 	if (stored) {
 		text.value = stored.text;
 		filename.value = stored.filename;
-		savedSnapshot = text.value;
 		compileNow();
 	} else {
 		fetchExample('cardholder.tan').then((content) => {
@@ -318,12 +304,12 @@ onMounted(() => {
 				return;
 			}
 			text.value = content;
-			savedSnapshot = content;
 			compileNow();
 		});
 	}
 	mq = window.matchMedia('(max-width: 767px)');
 	mobile.value = mq.matches;
+	expanded.value = !mq.matches;
 	mq.addEventListener('change', onMq);
 	window.addEventListener('beforeprint', onBeforePrint);
 });
@@ -361,14 +347,8 @@ function onMq(e: MediaQueryListEvent) {
 	mobile.value = e.matches;
 }
 
-function setPanel(p: 'code' | 'controls') {
-	panel.value = p;
-	if (mobile.value) mobileTab.value = p;
-}
-
-function setMobileTab(t: 'view' | 'code' | 'controls') {
+function setMobileTab(t: 'view' | 'code') {
 	mobileTab.value = t;
-	if (t !== 'view') panel.value = t;
 }
 
 function onDragStart(e: PointerEvent) {
@@ -504,8 +484,7 @@ function onCustomDim(ev: Event, axis: 'w' | 'h') {
 }
 
 function confirmDiscard(): boolean {
-	if (text.value === savedSnapshot) return true;
-	return window.confirm('You have unsaved changes. Discard them?');
+	return window.confirm('Discard the current document?');
 }
 
 async function fetchExample(name: string): Promise<string | null> {
@@ -533,7 +512,6 @@ async function onSelectExample(ev: Event) {
 	}
 	text.value = content;
 	filename.value = name;
-	savedSnapshot = content;
 	compileNow();
 }
 
@@ -543,7 +521,6 @@ async function onNew() {
 	if (content == null) return;
 	text.value = content;
 	filename.value = 'pattern.tan';
-	savedSnapshot = content;
 	compileNow();
 }
 
@@ -556,7 +533,6 @@ function onOpen(ev: Event) {
 	file.text().then((s) => {
 		text.value = s;
 		filename.value = file.name;
-		savedSnapshot = s;
 		compileNow();
 	});
 }

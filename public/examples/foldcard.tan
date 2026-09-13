@@ -1,0 +1,48 @@
+version: 1
+unit: mm
+defaults:
+  leather: veg-tan
+  thickness: 1.5
+  stitch:
+    inset: 3.5
+    spacing: 3.5
+    hole: 1
+    style: saddle
+    color: "#e8d4a0"
+
+leathers:
+  veg-tan:
+    front: { roughness: 0.35, grain: fine }
+    back: { roughness: 0.8, grain: suede }
+    color: "#6b3a2a"
+
+# 120×80 tent-fold card, shown flat. The spine rests folded at 180 in 3D.
+# Stitching skips the spine so the fold stays clean.
+pieces:
+  - id: card
+    side: front
+    outline:
+      rect: { w: 120, h: 80, r: 4 }
+    stitch:
+      - along: outline
+        skip: [[55, 65]]
+    folds:
+      - id: spine
+        from: [60, 0]
+        to: [60, 80]
+        angle: 180
+        hinge: valley
+    motion:
+      - id: spine
+        folds: { spine: 180 }
+
+layout:
+  paper: A4
+  margin: 10
+  placements:
+    - piece: card
+      x: 15
+      y: 15
+      rotate: 0
+
+assembly: []

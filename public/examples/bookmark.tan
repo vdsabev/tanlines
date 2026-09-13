@@ -1,0 +1,39 @@
+version: 1
+unit: mm
+defaults:
+  leather: veg-tan
+  thickness: 1.5
+  stitch:
+    inset: 3
+    spacing: 3.5
+    hole: 1
+    style: saddle
+    color: "#e8d4a0"
+
+leathers:
+  veg-tan:
+    front: { roughness: 0.35, grain: fine }
+    back: { roughness: 0.8, grain: suede }
+    color: "#6b3a2a"
+
+# 40×150 bookmark. The ellipse hole near the top takes a tassel cord.
+pieces:
+  - id: bookmark
+    side: front
+    outline:
+      rect: { w: 40, h: 150, r: 6 }
+    holes:
+      - ellipse: { cx: 20, cy: 14, rx: 3, ry: 4 }
+    stitch:
+      - along: outline
+
+layout:
+  paper: A5
+  margin: 10
+  placements:
+    - piece: bookmark
+      x: 15
+      y: 15
+      rotate: 0
+
+assembly: []

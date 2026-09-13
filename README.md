@@ -24,6 +24,6 @@ Print the PDF at **Actual size / 100%**. Check the 50 mm bar with a ruler.
 - `flip: x | y` as a back-texture turn in 3D. Parsed and stored.
 - Confirm a printed PDF against a ruler (phase 2 “done when”).
 - `src/view2d/` (empty) and a separate `schema.ts` (schema lives in `parse.ts`).
-- More example `.tan` files (drop them in `public/examples/` and list them in `App.vue`); tests cover geometry, `public/examples/cardholder.tan` is the only document.
+- More example `.tan` files (drop them in `public/examples/` and list them in `App.vue`); tests cover geometry, `public/examples/` holds cardholder, bookmark, and foldcard.
 
 Out of v1: nested print packing UI, URL-encoded documents, component/E2E tests, timeline animation (motion is sliders).
