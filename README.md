@@ -25,6 +25,5 @@ Print the PDF at **Actual size / 100%**. Check the 50 mm bar with a ruler.
 - Confirm a printed PDF against a ruler (phase 2 “done when”).
 - `src/view2d/` (empty) and a separate `schema.ts` (schema lives in `parse.ts`).
 - More example `.tan` files; tests cover geometry, `examples/cardholder.tan` is the only document.
-- Declare `three` in this package’s `package.json` (resolved from the parent install today).
 
 Out of v1: nested print packing UI, URL-encoded documents, component/E2E tests, timeline animation (motion is sliders).
