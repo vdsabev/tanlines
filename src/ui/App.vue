@@ -257,13 +257,11 @@ import {
 	SIDEBAR_W_MIN,
 } from '../persist';
 // New examples go in public/examples/ (hosted at <base>/examples/) and in exampleNames.
-import example from '../../public/examples/cardholder.tan?raw';
-
 const exampleNames = ['cardholder.tan'];
-const text = ref(example);
+const text = ref('');
 const filename = ref('cardholder.tan');
 // Last content the user chose to load; anything else is unsaved work.
-let savedSnapshot = example;
+let savedSnapshot = '';
 const error = ref('');
 const svg = ref('');
 const printSvg = ref('');
@@ -311,9 +309,19 @@ onMounted(() => {
 	if (stored) {
 		text.value = stored.text;
 		filename.value = stored.filename;
+		savedSnapshot = text.value;
+		compileNow();
+	} else {
+		fetchExample('cardholder.tan').then((content) => {
+			if (content == null) {
+				error.value = 'could not load cardholder.tan';
+				return;
+			}
+			text.value = content;
+			savedSnapshot = content;
+			compileNow();
+		});
 	}
-	savedSnapshot = text.value;
-	compileNow();
 	mq = window.matchMedia('(max-width: 767px)');
 	mobile.value = mq.matches;
 	mq.addEventListener('change', onMq);
@@ -500,6 +508,16 @@ function confirmDiscard(): boolean {
 	return window.confirm('You have unsaved changes. Discard them?');
 }
 
+async function fetchExample(name: string): Promise<string | null> {
+	try {
+		const res = await fetch(`${import.meta.env.BASE_URL}examples/${name}`);
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+		return await res.text();
+	} catch {
+		return null;
+	}
+}
+
 async function onSelectExample(ev: Event) {
 	const sel = ev.target as HTMLSelectElement;
 	const name = sel.value;
@@ -508,27 +526,24 @@ async function onSelectExample(ev: Event) {
 		sel.value = filename.value;
 		return;
 	}
-	try {
-		const res = await fetch(`${import.meta.env.BASE_URL}examples/${name}`);
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		text.value = await res.text();
-	} catch {
-		if (name === 'cardholder.tan') text.value = example;
-		else {
-			sel.value = filename.value;
-			return;
-		}
+	const content = await fetchExample(name);
+	if (content == null) {
+		sel.value = filename.value;
+		return;
 	}
+	text.value = content;
 	filename.value = name;
-	savedSnapshot = text.value;
+	savedSnapshot = content;
 	compileNow();
 }
 
-function onNew() {
+async function onNew() {
 	if (!confirmDiscard()) return;
-	text.value = example;
+	const content = await fetchExample('cardholder.tan');
+	if (content == null) return;
+	text.value = content;
 	filename.value = 'pattern.tan';
-	savedSnapshot = text.value;
+	savedSnapshot = content;
 	compileNow();
 }
 
