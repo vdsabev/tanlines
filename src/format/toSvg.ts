@@ -2,10 +2,35 @@ import { pathToD } from './pathD';
 import { stitchPairs } from './thread';
 import type { Hardware, Scene } from './types';
 
+function svgOpen(w: number, h: number): string {
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}">`;
+}
+
+export function toPrintSvg(scene: Scene): string {
+	const { w, h } = scene.paper;
+	const parts: string[] = [svgOpen(w, h), calibBar(scene.margin)];
+	for (const p of scene.pieces) {
+		const { x, y, rotate } = p.place;
+		parts.push(`<g transform="translate(${x} ${y}) rotate(${rotate})">`);
+		const d = pathToD(p.outline) + p.holes.map((h) => ' ' + pathToD(h)).join('');
+		parts.push(
+			`<path d="${d}" fill="none" stroke="#111" stroke-width="0.3"/>`,
+		);
+		for (const s of p.stitchHoles) {
+			parts.push(
+				`<circle cx="${s.x}" cy="${s.y}" r="${s.d / 2}" fill="none" stroke="#111" stroke-width="0.2"/>`,
+			);
+		}
+		parts.push('</g>');
+	}
+	parts.push('</svg>');
+	return parts.join('');
+}
+
 export function toSvg(scene: Scene, selectedId?: string | null): string {
 	const { w, h } = scene.paper;
 	const parts: string[] = [
-		`<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}">`,
+		svgOpen(w, h),
 		`<rect x="0" y="0" width="${w}" height="${h}" fill="#f4efe6" stroke="#222" stroke-width="0.2"/>`,
 		grid(w, h),
 		axes(),

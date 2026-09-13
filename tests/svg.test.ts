@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { PDFDocument } from 'pdf-lib';
 import { compile } from '../src/format/compile';
 import { parseDocument } from '../src/format/parse';
-import { toSvg } from '../src/format/toSvg';
+import { toSvg, toPrintSvg } from '../src/format/toSvg';
 import { toPdf } from '../src/format/toPdf';
 
 const src = `
@@ -25,6 +25,20 @@ describe('toSvg', () => {
 		expect(svg).toContain('width="148mm"');
 		expect(svg).toContain('height="210mm"');
 		expect(svg).toContain('50 mm');
+	});
+});
+
+describe('toPrintSvg', () => {
+	it('outlines only: no grid, background, or fills', () => {
+		const r = parseDocument(src);
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+		const svg = toPrintSvg(compile(r.doc));
+		expect(svg).toContain('width="148mm"');
+		expect(svg).toContain('fill="none"');
+		expect(svg).toContain('50 mm');
+		expect(svg).not.toContain('#f4efe6');
+		expect(svg).not.toContain('M0 0 H30');
 	});
 });
 

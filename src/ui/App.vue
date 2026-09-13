@@ -1,12 +1,8 @@
 <template>
-	<div class="flex h-full flex-col">
+	<div class="flex h-full flex-col print:block print:h-auto">
 		<header
-			class="flex flex-wrap items-center gap-1 border-b border-stone-700 p-1"
+			class="flex items-center gap-1 border-b border-stone-700 px-1.5 py-1 print:hidden"
 		>
-			<ToolbarButton class="md:hidden" @click="toggleSidebar">
-				{{ sidebarOpen ? 'hide code' : 'show code' }}
-			</ToolbarButton>
-
 			<ToolbarButton @click="onNew">new</ToolbarButton>
 
 			<ToolbarButton as="label">
@@ -19,82 +15,174 @@
 				/>
 			</ToolbarButton>
 
-			<span class="text-stone-400">{{ filename }}</span>
-
-			<span class="ms-2 text-stone-400">view:</span>
-			<ToolbarButton :on="view === '2d'" @click="view = '2d'">2d</ToolbarButton>
-			<ToolbarButton :on="view === '3d'" @click="view = '3d'">3d</ToolbarButton>
-			<ToolbarButton
-				v-if="pieceIds.length > 1"
-				:on="view === 'assembly'"
-				@click="view = 'assembly'"
+			<span class="min-w-0 max-w-[30vw] shrink-0 truncate text-stone-400">{{
+				filename
+			}}</span>
+			<span
+				v-if="error"
+				class="ms-auto min-w-0 flex-1 truncate text-right text-red-400"
+				:title="error"
+				>{{ error }}</span
 			>
-				assembly
-			</ToolbarButton>
-			<template v-if="view === '3d' && pieceIds.length > 1">
-				<ToolbarButton
-					v-for="id in pieceIds"
-					:key="id"
-					:on="pieceId === id"
-					@click="pieceId = id"
-				>
-					{{ id }}
-				</ToolbarButton>
-			</template>
-			<span v-if="view === 'assembly'" class="ms-1 text-stone-400">
-				<template v-if="joins.length">
-					join:
-					<template v-for="(j, i) in joins" :key="i">
-						<span v-if="i">, </span>
-						{{ j.a }} ↔ {{ j.b }}
-					</template>
-				</template>
-				<template v-else>join: none</template>
-			</span>
-			<label
-				v-for="m in viewMotions"
-				:key="m.id"
-				class="ms-2 flex items-center gap-1 text-stone-400"
-			>
-				{{ m.id }}
-				<input
-					class="accent-amber-400"
-					type="range"
-					:min="motionSlider(m).min"
-					:max="motionSlider(m).max"
-					step="1"
-					:value="motionSlider(m).value"
-					@input="onMotion(m, $event)"
-				/>
-				<span>{{ motionReadout(m) }}</span>
-			</label>
+			<ExportButton :class="error ? '' : 'ms-auto'" @export="onExport" />
 		</header>
 
-		<div ref="splitEl" class="flex min-h-0 flex-1">
-			<div class="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-stone-900">
+		<div ref="splitEl" class="flex min-h-0 flex-1 print:block">
+			<div
+				v-show="!mobile || mobileTab === 'view'"
+				class="print-view relative min-h-0 min-w-0 flex-1 overflow-hidden bg-stone-900 print:overflow-visible print:bg-white"
+			>
 				<div
 					v-show="view === '2d'"
-					class="h-full [&_svg]:block [&_svg]:h-full [&_svg]:w-full"
+					class="h-full [&_svg]:block [&_svg]:h-full [&_svg]:w-full print:hidden"
 					v-html="svg"
+				/>
+				<div
+					ref="printSheetEl"
+					class="print-sheet hidden [&_svg]:block [&_svg]:h-auto [&_svg]:w-full"
+					v-html="printSvg"
 				/>
 				<View3d
 					v-show="view !== '2d'"
-					:active="view !== '2d'"
+					class="print:hidden"
+					:active="view !== '2d' && (!mobile || mobileTab === 'view')"
 					:mode="view === 'assembly' ? 'assembly' : 'piece'"
 					:piece="activePiece"
 					:scene="lastScene"
 					:motions="viewMotions"
 					:motionT="motionT"
 				/>
+
+				<div
+					class="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap gap-1 p-1.5 print:hidden"
+				>
+					<div
+						class="pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-stone-700/80 bg-stone-950/60 px-1.5 py-1 backdrop-blur"
+					>
+						<span class="flex flex-wrap items-center gap-1">
+							<ToolbarButton :on="view === '2d'" @click="view = '2d'"
+								>2d</ToolbarButton
+							>
+							<ToolbarButton :on="view === '3d'" @click="view = '3d'"
+								>3d</ToolbarButton
+							>
+							<ToolbarButton
+								v-if="pieceIds.length > 1"
+								:on="view === 'assembly'"
+								@click="view = 'assembly'"
+							>
+								assembly
+							</ToolbarButton>
+							<template v-if="view === '3d' && pieceIds.length > 1">
+								<ToolbarButton
+									v-for="id in pieceIds"
+									:key="id"
+									:on="pieceId === id"
+									@click="pieceId = id"
+								>
+									{{ id }}
+								</ToolbarButton>
+							</template>
+							<span v-if="view === 'assembly'" class="text-stone-400">
+								<template v-if="joins.length">
+									join:
+									<template v-for="(j, i) in joins" :key="i">
+										<span v-if="i">, </span>{{ j.a }} ↔ {{ j.b }}
+									</template>
+								</template>
+								<template v-else>join: none</template>
+							</span>
+						</span>
+
+						<span class="flex flex-wrap items-center gap-1">
+							<span class="text-stone-500">paper:</span>
+							<select
+								class="border border-stone-600 bg-stone-900 px-1 py-0.5 text-stone-200"
+								:value="paperKind"
+								@change="
+									setPaper(
+										($event.target as HTMLSelectElement).value as PaperPick,
+									)
+								"
+							>
+								<option v-for="p in paperNames" :key="p" :value="p">
+									{{ p }}
+								</option>
+							</select>
+							<template v-if="paperKind === 'custom'">
+								<PaperSizeInput
+									type="number"
+									min="1"
+									step="1"
+									:value="customW"
+									@change="onCustomDim($event, 'w')"
+								/>
+								<span class="text-stone-400">×</span>
+								<PaperSizeInput
+									type="number"
+									min="1"
+									step="1"
+									:value="customH"
+									@change="onCustomDim($event, 'h')"
+								/>
+								<span class="text-stone-400">mm</span>
+							</template>
+							<span v-else class="text-stone-400">
+								{{ paperW }}×{{ paperH }}mm
+							</span>
+						</span>
+					</div>
+				</div>
 			</div>
 
 			<aside
-				v-show="!mobile || sidebarOpen"
-				class="relative flex shrink-0 flex-col bg-stone-900"
-				:class="mobile ? 'absolute inset-0 z-10' : ''"
+				v-show="!mobile || mobileTab !== 'view'"
+				class="relative flex min-h-0 shrink-0 flex-col bg-stone-900 print:hidden"
+				:class="mobile ? 'min-w-0 flex-1' : ''"
 				:style="mobile ? undefined : { width: sidebarW + 'px' }"
 			>
-				<YamlEditor v-model="text" @input="onInput" />
+				<div
+					class="hidden gap-1 border-b border-l border-stone-700 px-1.5 py-1 md:flex"
+				>
+					<ToolbarButton :on="panel === 'code'" @click="setPanel('code')">
+						code
+					</ToolbarButton>
+					<ToolbarButton
+						:on="panel === 'controls'"
+						@click="setPanel('controls')"
+					>
+						controls
+					</ToolbarButton>
+				</div>
+				<YamlEditor
+					v-if="sideTab === 'code'"
+					v-model="text"
+					@input="onInput"
+				/>
+				<ControlPanel v-else>
+					<label
+						v-for="m in viewMotions"
+						:key="m.id"
+						class="mb-2 flex items-center gap-2 text-stone-400"
+					>
+						<span class="w-16 shrink-0 truncate">{{ m.id }}</span>
+						<input
+							class="min-w-0 flex-1 accent-amber-400"
+							type="range"
+							:min="motionSlider(m).min"
+							:max="motionSlider(m).max"
+							step="1"
+							:value="motionSlider(m).value"
+							@input="onMotion(m, $event)"
+						/>
+						<span class="w-16 shrink-0 text-right text-stone-200">{{
+							motionReadout(m)
+						}}</span>
+					</label>
+					<p v-if="!viewMotions.length" class="text-stone-500">
+						no 3d motions
+					</p>
+				</ControlPanel>
 
 				<div
 					v-if="!mobile"
@@ -109,84 +197,51 @@
 			</aside>
 		</div>
 
-		<footer
-			class="flex items-center gap-1 border-t border-stone-700 bg-stone-950 p-1"
+		<nav
+			v-if="mobile"
+			class="flex gap-1 border-t border-stone-700 px-1.5 py-1 md:hidden print:hidden"
 		>
-			<div class="contents">
-				<!-- Paper -->
-				<span class="text-stone-400">paper:</span>
-
-				<ToolbarButton
-					v-for="p in paperNames"
-					:key="p"
-					:on="paperKind === p"
-					@click="setPaper(p)"
-				>
-					{{ p }}
-				</ToolbarButton>
-
-				<template v-if="paperKind === 'custom'">
-					<PaperSizeInput
-						type="number"
-						min="1"
-						step="1"
-						:value="customW"
-						@change="onCustomDim($event, 'w')"
-					/>
-
-					<span class="text-stone-400">×</span>
-
-					<PaperSizeInput
-						type="number"
-						min="1"
-						step="1"
-						:value="customH"
-						@change="onCustomDim($event, 'h')"
-					/>
-
-					<span class="text-stone-400">mm</span>
-				</template>
-
-				<span v-else class="text-stone-400"> {{ paperW }}×{{ paperH }}mm </span>
-			</div>
-
-			<!-- Export -->
-			<div class="contents">
-				<span class="ms-2 text-stone-400">export:</span>
-
-				<ToolbarButton @click="onExportTan">tan</ToolbarButton>
-
-				<ToolbarButton @click="onExportSvg">svg</ToolbarButton>
-
-				<ToolbarButton @click="onExportPdf">pdf</ToolbarButton>
-
-				<ToolbarButton @click="onPrint">print</ToolbarButton>
-			</div>
-
-			<div v-if="error" class="ms-auto text-red-400">{{ error }}</div>
-		</footer>
+			<ToolbarButton
+				class="flex-1 text-center"
+				:on="mobileTab === 'view'"
+				@click="setMobileTab('view')"
+				>view</ToolbarButton
+			>
+			<ToolbarButton
+				class="flex-1 text-center"
+				:on="mobileTab === 'code'"
+				@click="setMobileTab('code')"
+				>code</ToolbarButton
+			>
+			<ToolbarButton
+				class="flex-1 text-center"
+				:on="mobileTab === 'controls'"
+				@click="setMobileTab('controls')"
+				>controls</ToolbarButton
+			>
+		</nav>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ToolbarButton from './ToolbarButton.vue';
+import ExportButton, { type ExportFormat } from './ExportButton.vue';
 import PaperSizeInput from './PaperSizeInput.vue';
 import YamlEditor from './YamlEditor.vue';
+import ControlPanel from './ControlPanel.vue';
 import View3d from '../view3d/View3d.vue';
 import { compile } from '../format/compile';
 import { parseDocument } from '../format/parse';
 import { paperPick, setLayoutPaper, type PaperPick } from '../format/paper';
-import { toSvg } from '../format/toSvg';
+import { toSvg, toPrintSvg } from '../format/toSvg';
 import type { Motion, PieceGeom, Scene } from '../format/types';
 import { assemblyMotions } from '../view3d/assemble';
 import { foldPose, foldPoseT, motionTarget } from '../format/pose';
 import {
 	download,
-	loadSidebarOpen,
 	loadSidebarW,
 	loadStored,
-	saveSidebarOpen,
 	saveSidebarW,
 	saveStored,
 	SIDEBAR_W_MIN,
@@ -197,11 +252,14 @@ const text = ref(example);
 const filename = ref('cardholder.tan');
 const error = ref('');
 const svg = ref('');
+const printSvg = ref('');
 const stitchNote = ref('');
 const sidebarW = ref(loadSidebarW());
-const sidebarOpen = ref(loadSidebarOpen());
+const panel = ref<'code' | 'controls'>('code');
+const mobileTab = ref<'view' | 'code' | 'controls'>('view');
 const mobile = ref(false);
 const splitEl = ref<HTMLElement | null>(null);
+const printSheetEl = ref<HTMLElement | null>(null);
 const paperNames: PaperPick[] = ['A3', 'A4', 'A5', 'custom'];
 const paperKind = ref<PaperPick>('A4');
 const paperW = ref(210);
@@ -221,6 +279,9 @@ const activePiece = computed<PieceGeom | null>(() => {
 	return s.pieces.find((p) => p.id === pieceId.value) ?? s.pieces[0] ?? null;
 });
 const joins = computed(() => lastScene.value?.assembly ?? []);
+const sideTab = computed<'code' | 'controls'>(() =>
+	mobile.value && mobileTab.value !== 'view' ? mobileTab.value : panel.value,
+);
 const viewMotions = computed<Motion[]>(() => {
 	if (view.value === '2d') return [];
 	if (view.value === 'assembly')
@@ -241,19 +302,50 @@ onMounted(() => {
 	mq = window.matchMedia('(max-width: 767px)');
 	mobile.value = mq.matches;
 	mq.addEventListener('change', onMq);
+	window.addEventListener('beforeprint', onBeforePrint);
 });
 
 onUnmounted(() => {
 	mq?.removeEventListener('change', onMq);
+	window.removeEventListener('beforeprint', onBeforePrint);
 });
+
+function onBeforePrint() {
+	if (!lastScene.value) {
+		printSvg.value = '';
+		return;
+	}
+	printSvg.value = toPrintSvg(lastScene.value);
+	// 1:1 scale with no browser header/footer: page matches paper, zero margin.
+	const { w, h } = lastScene.value.paper;
+	let el = document.getElementById('print-page-size');
+	if (!el) {
+		el = document.createElement('style');
+		el.id = 'print-page-size';
+		document.head.appendChild(el);
+	}
+	el.textContent = `@page { size: ${w}mm ${h}mm; margin: 0; }`;
+	// Exact-size box so a fractional-pixel sliver can't spill onto page 2;
+	// overflow is clipped instead (see .print-sheet CSS).
+	const sheet = printSheetEl.value;
+	if (sheet) {
+		sheet.style.width = `${w}mm`;
+		sheet.style.height = `${h}mm`;
+	}
+}
 
 function onMq(e: MediaQueryListEvent) {
 	mobile.value = e.matches;
 }
 
-function toggleSidebar() {
-	sidebarOpen.value = !sidebarOpen.value;
-	saveSidebarOpen(sidebarOpen.value);
+function setPanel(p: 'code' | 'controls') {
+	panel.value = p;
+	if (mobile.value) mobileTab.value = p;
+}
+
+function setMobileTab(t: 'view' | 'code' | 'controls') {
+	mobileTab.value = t;
+	if (t !== 'view') panel.value = t;
 }
 
 function onDragStart(e: PointerEvent) {
@@ -402,6 +494,13 @@ function onOpen(ev: Event) {
 		filename.value = file.name;
 		compileNow();
 	});
+}
+
+function onExport(f: ExportFormat) {
+	if (f === 'tan') onExportTan();
+	else if (f === 'svg') onExportSvg();
+	else if (f === 'pdf') void onExportPdf();
+	else void onPrint();
 }
 
 function onExportTan() {

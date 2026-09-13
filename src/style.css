@@ -1,5 +1,32 @@
 @import 'tailwindcss';
 
+@media print {
+	/* show the clean print sheet and its parent view area regardless of v-show */
+	html,
+	body,
+	#app {
+		height: auto !important;
+		background: #fff !important;
+	}
+	.print-view,
+	.print-sheet {
+		display: block !important;
+	}
+	.print-view {
+		overflow: visible !important;
+		background: #fff !important;
+	}
+	.print-sheet {
+		overflow: hidden;
+		break-inside: avoid;
+		page-break-inside: avoid;
+	}
+	.print-sheet svg {
+		width: 100%;
+		height: auto;
+	}
+}
+
 .token.comment {
 	@apply text-stone-500;
 }
