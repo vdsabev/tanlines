@@ -1,7 +1,7 @@
 <template>
 	<div class="flex h-full flex-col print:block print:h-auto">
 		<header
-			class="flex items-center gap-1 border-b border-stone-700 px-1.5 py-1 print:hidden"
+			class="flex items-center gap-1 border-b border-stone-700 p-1 print:hidden"
 		>
 			<ToolbarButton @click="onNew">new</ToolbarButton>
 
@@ -15,19 +15,11 @@
 				/>
 			</ToolbarButton>
 
-			<select
-				class="h-[29px] min-w-0 max-w-[30vw] shrink-0 truncate rounded-none border border-stone-600 bg-stone-900 px-2 py-1 whitespace-nowrap text-stone-400"
-				:value="filename"
-				title="example"
-				@change="onSelectExample"
-			>
-				<option v-for="name in exampleNames" :key="name" :value="name">
-					{{ name }}
-				</option>
-				<option v-if="!exampleNames.includes(filename)" :value="filename">
-					{{ filename }}
-				</option>
-			</select>
+			<ExamplesButton
+				:filename="filename"
+				:examples="exampleNames"
+				@pick="onSelectExample"
+			/>
 			<span
 				v-if="error"
 				class="ms-auto min-w-0 flex-1 truncate text-right text-red-400"
@@ -69,7 +61,7 @@
 					<div
 						class="pointer-events-auto rounded border border-stone-700/80 bg-stone-950/60 backdrop-blur"
 					>
-						<div class="flex items-center gap-1 px-1.5 py-1">
+						<div class="flex items-center gap-1 p-1">
 							<ToolbarButton
 								:title="expanded ? 'collapse panel' : 'expand panel'"
 								@click="expanded = !expanded"
@@ -177,7 +169,7 @@
 									}}</span>
 								</label>
 								<p v-if="!viewMotions.length" class="text-stone-500">
-									no 3d motions
+									you haven't set up any 3d controls yet
 								</p>
 							</div>
 						</div>
@@ -230,6 +222,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ToolbarButton from './ToolbarButton.vue';
 import ExportButton, { type ExportFormat } from './ExportButton.vue';
+import ExamplesButton from './ExamplesButton.vue';
 import PaperSizeInput from './PaperSizeInput.vue';
 import YamlEditor from './YamlEditor.vue';
 import { starterText } from './starter';
@@ -252,7 +245,7 @@ import {
 // New examples go in public/examples/ (hosted at <base>/examples/) and in exampleNames.
 const exampleNames = ['cardholder.tan', 'bookmark.tan', 'foldcard.tan'];
 const text = ref('');
-const filename = ref('cardholder.tan');
+const filename = ref('pattern.tan');
 const error = ref('');
 const svg = ref('');
 const printSvg = ref('');
@@ -311,14 +304,9 @@ onMounted(() => {
 		filename.value = stored.filename;
 		compileNow();
 	} else {
-		fetchExample('cardholder.tan').then((content) => {
-			if (content == null) {
-				error.value = 'could not load cardholder.tan';
-				return;
-			}
-			text.value = content;
-			compileNow();
-		});
+		text.value = starterText;
+		filename.value = 'pattern.tan';
+		compileNow();
 	}
 	mq = window.matchMedia('(max-width: 767px)');
 	mobile.value = mq.matches;
@@ -510,24 +498,9 @@ function filenameFromUrl(url: string): string {
 	return 'shared.tan';
 }
 
-async function fetchExample(name: string): Promise<string | null> {
-	try {
-		const res = await fetch(`${import.meta.env.BASE_URL}examples/${name}`);
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		return await res.text();
-	} catch {
-		return null;
-	}
-}
-
-function onSelectExample(ev: Event) {
-	const sel = ev.target as HTMLSelectElement;
-	const name = sel.value;
+function onSelectExample(name: string) {
 	if (name === filename.value) return;
-	if (!confirmDiscard()) {
-		sel.value = filename.value;
-		return;
-	}
+	if (!confirmDiscard()) return;
 	const url = new URL(
 		`${import.meta.env.BASE_URL}examples/${name}`,
 		window.location.href,

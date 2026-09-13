@@ -13,4 +13,6 @@ layout:
   margin: 10
   placements:
     - piece: piece
+      x: 10
+      y: 10
 `;
