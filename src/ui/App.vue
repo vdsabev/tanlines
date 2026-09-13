@@ -246,6 +246,7 @@ import {
 	saveStored,
 	SIDEBAR_W_MIN,
 } from '../persist';
+// TODO: example-selector dropdown fetching hosted .tan files (serve examples/ from dist).
 import example from '../../examples/cardholder.tan?raw';
 
 const text = ref(example);
